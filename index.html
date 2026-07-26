@@ -494,7 +494,7 @@ function drawPriceChart(visible, upto){
   drawLine(indicators.ema20, '#8A93A0', 1.3);
   drawLine(indicators.ema200, '#5B6BFF', 1.8);
 }
-  function drawVolChart(upto){
+function drawVolChart(upto){
   const volCanvas = document.getElementById('volCanvas');
   if(!volCanvas || !session) return;
   const ctx = volCanvas.getContext('2d');
@@ -509,54 +509,43 @@ function drawPriceChart(visible, upto){
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = upto + 1;
   const candles = session.candles.slice(0, n);
-  // 거래량 배열
+
+  // 최근 20개 평균 (기준선용)
+  let avgV = 0, cnt = 0;
+  const start = Math.max(0, n - 20);
+  for(let i = start; i < n; i++){
+    if(candles[i].v != null && !isNaN(candles[i].v)){
+      avgV += candles[i].v;
+      cnt++;
+    }
+  }
+  avgV = cnt > 0 ? avgV / cnt : 0;
+
+  // 상위 10% 제외한 스케일 (장마감 폭발 봉 방지)
   const vols = [];
-  for (const c of candles) {
-    if (c.v != null && !isNaN(c.v) && c.v > 0) vols.push(c.v);
+  for(const c of candles){
+    if(c.v != null && !isNaN(c.v) && c.v > 0) vols.push(c.v);
   }
   vols.sort((a, b) => a - b);
-
-  // 상위 10% 잘라서 스케일 (장마감 폭발 봉 무시)
   let maxV = 1;
-  if (vols.length) {
+  if(vols.length){
     const idx = Math.max(0, Math.floor(vols.length * 0.90) - 1);
     maxV = vols[idx];
   }
 
   const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
-  const yAt = v => padT + (1 - Math.min(v, maxV) / maxV) * plotH; // 큰 봉은 천장에 잘림
+  const yAt = v => padT + (1 - Math.min(v, maxV) / maxV) * plotH;
   const barW = Math.max(1, plotW / n * 0.6);
 
-  for (let i = 0; i < n; i++) {
+  for(let i = 0; i < n; i++){
     const c = candles[i];
-    if (c.v == null || isNaN(c.v) || c.v <= 0) continue;
+    if(c.v == null || isNaN(c.v) || c.v <= 0) continue;
     const x = xAt(i);
     const up = c.close >= c.open;
     const isHigh = avgV > 0 && c.v >= avgV * 1.5;
     ctx.fillStyle = isHigh
       ? (up ? '#3ECF8E' : '#E5484D')
       : (up ? 'rgba(62,207,142,0.45)' : 'rgba(229,72,77,0.45)');
-    const top = yAt(c.v);
-    ctx.fillRect(x - barW / 2, top, barW, padT + plotH - top);
-  }
-
-  // 최근 20개 평균 (상대거래량 기준선)
-  let avgV = 0, cnt = 0;
-  const start = Math.max(0, n - 20);
-  for(let i = start; i < n; i++){ if(candles[i].v != null){ avgV += candles[i].v; cnt++; } }
-  avgV = cnt > 0 ? avgV / cnt : 0;
-
-  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
-  const yAt = v => padT + (1 - v / maxV) * plotH;
-  const barW = Math.max(1, plotW / n * 0.6);
-
-  for(let i = 0; i < n; i++){
-    const c = candles[i];
-    if(c.v == null) continue;
-    const x = xAt(i);
-    const up = c.close >= c.open;
-    const isHigh = avgV > 0 && c.v >= avgV * 1.5;
-    ctx.fillStyle = isHigh ? (up ? '#3ECF8E' : '#E5484D') : (up ? 'rgba(62,207,142,0.45)' : 'rgba(229,72,77,0.45)');
     const top = yAt(c.v);
     ctx.fillRect(x - barW / 2, top, barW, padT + plotH - top);
   }
@@ -574,22 +563,47 @@ function drawPriceChart(visible, upto){
     ctx.setLineDash([]);
   }
 }
+
 function drawStochChart(upto){
-  const ctx = stochCanvas.getContext('2d'); const W = stochCanvas.clientWidth || 1000; const H = 120;
-  stochCanvas.width=W*2; stochCanvas.height=H*2; ctx.scale(2,2); ctx.clearRect(0,0,W,H);
-  const padL=54, padR=10, padT=8, padB=8; const plotW=W-padL-padR, plotH=H-padT-padB; const n = upto+1;
-  const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = v => padT + (1-v/100)*plotH;
-
-  ctx.strokeStyle='#1C2530'; [20,50,80].forEach(v=>{ ctx.beginPath(); ctx.moveTo(padL,yAt(v)); ctx.lineTo(W-padR,yAt(v)); ctx.stroke(); });
-  ctx.fillStyle='#5B6673'; ctx.font='10px monospace'; ctx.fillText('80',4,yAt(80)+3); ctx.fillText('20',4,yAt(20)+3);
-
-  function drawLine(arr,color){
-    ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.beginPath(); let started=false;
-    for(let i=0;i<n;i++){ if(arr[i]==null) continue; const x=xAt(i), y=yAt(arr[i]); if(!started){ctx.moveTo(x,y); started=true;} else ctx.lineTo(x,y); } ctx.stroke();
+  const ctx = stochCanvas.getContext('2d');
+  const W = stochCanvas.clientWidth || 1000;
+  const H = 120;
+  stochCanvas.width = W * 2;
+  stochCanvas.height = H * 2;
+  ctx.scale(2, 2);
+  ctx.clearRect(0, 0, W, H);
+  const padL = 54, padR = 10, padT = 8, padB = 8;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = upto + 1;
+  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
+  const yAt = v => padT + (1 - v / 100) * plotH;
+  ctx.strokeStyle = '#1C2530';
+  [20, 50, 80].forEach(v => {
+    ctx.beginPath();
+    ctx.moveTo(padL, yAt(v));
+    ctx.lineTo(W - padR, yAt(v));
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#5B6673';
+  ctx.font = '10px monospace';
+  ctx.fillText('80', 4, yAt(80) + 3);
+  ctx.fillText('20', 4, yAt(20) + 3);
+  function drawLine(arr, color){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    let started = false;
+    for(let i = 0; i < n; i++){
+      if(arr[i] == null) continue;
+      const x = xAt(i), y = yAt(arr[i]);
+      if(!started){ ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
-  drawLine(indicators.stoch.K.slice(0,n), '#35C9C1'); drawLine(indicators.stoch.D.slice(0,n), '#E0629E');
+  drawLine(indicators.stoch.K.slice(0, n), '#35C9C1');
+  drawLine(indicators.stoch.D.slice(0, n), '#E0629E');
 }
-
 /* ---------------- 상호작용 및 결과 처리 ---------------- */
 document.getElementById('btnStep').addEventListener('click', ()=>{
   if(direction || dataMode==='real_live') return;
