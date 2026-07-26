@@ -948,11 +948,13 @@ async function requestAiAnalysis(provider) {
     let aiText = null;
 
     if (isClaude) {
-      if (data.content && data.content[0] && data.content[0].text) aiText = data.content[0].text;
-      else if (data.error) throw new Error(data.error);
-    } else {
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) aiText = data.candidates[0].content.parts[0].text;
-      else if (data.error) throw new Error(data.error);
+  if (data.content && Array.isArray(data.content)) {
+    const textBlock = data.content.find(c => c.type === 'text' && c.text);
+    if (textBlock) aiText = textBlock.text;
+  }
+  if (!aiText && data.error) {
+    throw new Error(typeof data.error === 'string' ? data.error : (data.error.message || 'Claude 오류'));
+  }
     }
 
     if (aiText) {
@@ -1016,11 +1018,11 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
     let aiText = null;
 
     if (isClaude) {
-      if (data.content?.[0]?.text) aiText = data.content[0].text;
-    } else {
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) aiText = data.candidates[0].content.parts[0].text;
-    }
-
+  if (data.content && Array.isArray(data.content)) {
+    const textBlock = data.content.find(c => c.type === 'text' && c.text);
+    if (textBlock) aiText = textBlock.text;
+  }
+}
     if (aiText) {
       aiText = aiText.replace(/\n/g, '<br>');
       aiResultBox.innerHTML = '<div style="font-size:11px; color:var(--muted); margin-bottom:8px;">모델: <b style="color:' + (isClaude ? 'var(--amber)' : 'var(--cyan)') + '">' + modelName + '</b> (현재 차트)</div>' + aiText;
