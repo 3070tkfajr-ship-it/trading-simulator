@@ -84,18 +84,20 @@
     </div>
   </div>
 
- <h2>🤖 AI 차트 스크린샷 분석</h2>
-<div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
-  토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 아지즈 기법 기준으로 타점을 분석해 줍니다.<br>
-  <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
-</div>
-
-<div class="srcbar">
-  <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
-  <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
-  <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
-  <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
-</div>
+   <!-- 🤖 AI 차트 스크린샷 분석 패널 -->
+  <div class="panel" id="aiAnalysisPanel">
+    <h2>🤖 AI 차트 스크린샷 분석</h2>
+    <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+      토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 아지즈 기법 기준으로 타점을 분석해 줍니다.<br>
+      <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
+    </div>
+    
+    <div class="srcbar">
+      <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
+      <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
+      <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
+      <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
+    </div>
 
     <!-- 이미지 미리보기 영역 -->
     <div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
