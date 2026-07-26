@@ -84,18 +84,18 @@
     </div>
   </div>
 
-  <!-- 🤖 AI 차트 스크린샷 분석 패널 -->
-  <div class="panel" id="aiAnalysisPanel">
-    <h2>🤖 AI 차트 스크린샷 분석 (Gemini Vision)</h2>
-    <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
-      토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 타점 관점에서 분석해 줍니다.
-    </div>
-    
-    <div class="srcbar">
-      <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
-      <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
-      <button id="btnAnalyze" class="live-btn" disabled>분석 요청하기</button>
-    </div>
+ <h2>🤖 AI 차트 스크린샷 분석</h2>
+<div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+  토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 아지즈 기법 기준으로 타점을 분석해 줍니다.<br>
+  <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
+</div>
+
+<div class="srcbar">
+  <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
+  <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
+  <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
+  <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
+</div>
 
     <!-- 이미지 미리보기 영역 -->
     <div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
@@ -892,123 +892,142 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
         alert("서버와 연결할 수 없어. Render 서버가 깨어나는 중(최대 1분)일 수 있으니 잠시 후 다시 시도해줘!"); 
     }
 });
-/* ---------------- 🚀 진짜 AI 스크린샷 분석 로직 ---------------- */
+/* ---------------- 🚀 AI 스크린샷 분석 로직 ---------------- */
 const imageInput = document.getElementById('chartImageInput');
 const chartPreview = document.getElementById('chartPreview');
 const previewContainer = document.getElementById('imagePreviewContainer');
-const btnAnalyze = document.getElementById('btnAnalyze');
+const btnAnalyzeGemini = document.getElementById('btnAnalyzeGemini');
+const btnAnalyzeClaude = document.getElementById('btnAnalyzeClaude');
 const aiResultBox = document.getElementById('aiResultBox');
 
 let base64Image = null;
 
-// 1. 이미지 선택 시 미리보기 띄우기
+// 1. 이미지 선택 시 미리보기
 imageInput.addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = function(event) {
-    base64Image = event.target.result; 
+    base64Image = event.target.result;
     chartPreview.src = base64Image;
     previewContainer.style.display = 'block';
-    btnAnalyze.disabled = false;
+    btnAnalyzeGemini.disabled = false;
+    btnAnalyzeClaude.disabled = false;
     aiResultBox.style.display = 'none';
   };
   reader.readAsDataURL(file);
 });
 
-// 2. 분석 요청 버튼 클릭 시 (🚀 진짜 서버 연동!)
-btnAnalyze.addEventListener('click', async function() {
+// 공통 분석 함수
+async function requestAiAnalysis(provider) {
   if (!base64Image) return;
+  const isClaude = provider === 'claude';
+  const btn = isClaude ? btnAnalyzeClaude : btnAnalyzeGemini;
+  const otherBtn = isClaude ? btnAnalyzeGemini : btnAnalyzeClaude;
+  const endpoint = isClaude
+    ? 'https://kis-proxy-server-di40.onrender.com/analyze-claude'
+    : 'https://kis-proxy-server-di40.onrender.com/analyze';
+  const modelName = isClaude ? 'Claude Sonnet 5' : 'Gemini';
 
-  // UI 상태 변경 (로딩 중)
-  btnAnalyze.textContent = '분석 중... ⏳';
-  btnAnalyze.disabled = true;
+  btn.textContent = modelName + ' 분석 중... ⏳';
+  btn.disabled = true;
+  otherBtn.disabled = true;
   aiResultBox.style.display = 'block';
-  aiResultBox.innerHTML = '<span style="color:var(--muted);">AI가 이미지를 정밀 분석 중입니다... 잠시만 기다려주세요. (최대 30초 소요)</span>';
+  aiResultBox.innerHTML = '<span style="color:var(--muted);">' + modelName + ' 분석 중... (최대 30초)</span>';
 
   try {
-    // base64 헤더(data:image/jpeg;base64, 부분) 떼어내기
     const base64Data = base64Image.split(',')[1];
-
-    // Render 서버의 /analyze 엔드포인트로 진짜 요청 쏘기
-    const response = await fetch('https://kis-proxy-server-di40.onrender.com/analyze', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: base64Data })
     });
-
     const data = await response.json();
-    
-    // 구글 Gemini가 보내준 분석 텍스트 뽑아내기
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      let aiText = data.candidates[0].content.parts[0].text;
-      // 엔터(\n)를 HTML 줄바꿈(<br>)으로 변경
-      aiText = aiText.replace(/\n/g, '<br>');
-      aiResultBox.innerHTML = aiText;
+    let aiText = null;
+
+    if (isClaude) {
+      if (data.content && data.content[0] && data.content[0].text) aiText = data.content[0].text;
+      else if (data.error) throw new Error(data.error);
     } else {
-      aiResultBox.innerHTML = '<span style="color:var(--amber);">AI가 응답했지만 결과를 읽을 수 없습니다. (차트 이미지가 명확하지 않을 수 있습니다)</span>';
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) aiText = data.candidates[0].content.parts[0].text;
+      else if (data.error) throw new Error(data.error);
     }
 
+    if (aiText) {
+      aiText = aiText.replace(/\n/g, '<br>');
+      aiResultBox.innerHTML = '<div style="font-size:11px; color:var(--muted); margin-bottom:8px;">모델: <b style="color:' + (isClaude ? 'var(--amber)' : 'var(--cyan)') + '">' + modelName + '</b></div>' + aiText;
+    } else {
+      aiResultBox.innerHTML = '<span style="color:var(--amber);">결과를 읽을 수 없습니다.</span>';
+    }
   } catch (error) {
-    aiResultBox.innerHTML = '<span style="color:var(--red);">분석 중 에러가 발생했습니다. 서버 연결을 확인해 주세요.</span>';
+    console.error(error);
+    aiResultBox.innerHTML = '<span style="color:var(--red);">에러: ' + (error.message || '서버 연결 확인') + '</span>';
   } finally {
-    btnAnalyze.textContent = '분석 요청하기';
-    btnAnalyze.disabled = false;
+    btn.textContent = isClaude ? '🧠 Claude Sonnet 5 분석' : '✨ Gemini 분석';
+    btn.disabled = false;
+    otherBtn.disabled = false;
   }
-});
-  /* ---------------- 현재 차트 원클릭 분석 ---------------- */
+}
+
+btnAnalyzeGemini.addEventListener('click', () => requestAiAnalysis('gemini'));
+btnAnalyzeClaude.addEventListener('click', () => requestAiAnalysis('claude'));
+
+/* ---------------- 현재 차트 원클릭 분석 ---------------- */
 document.getElementById('btnAnalyzeCurrent').addEventListener('click', async function() {
   const btn = this;
   const originalText = btn.textContent;
-  
-  btn.textContent = '분석 중... ⏳';
+  const choice = prompt("분석할 AI 선택:\n1 = Gemini\n2 = Claude Sonnet 5", "2");
+  if (!choice) return;
+
+  const isClaude = choice.trim() === '2';
+  const endpoint = isClaude
+    ? 'https://kis-proxy-server-di40.onrender.com/analyze-claude'
+    : 'https://kis-proxy-server-di40.onrender.com/analyze';
+  const modelName = isClaude ? 'Claude Sonnet 5' : 'Gemini';
+
+  btn.textContent = modelName + ' 분석 중... ⏳';
   btn.disabled = true;
-  
-  const aiResultBox = document.getElementById('aiResultBox');
   aiResultBox.style.display = 'block';
-  aiResultBox.innerHTML = '<span style="color:var(--muted);">현재 차트를 캡처해서 AI 분석 중입니다... (최대 30초)</span>';
-  
+  aiResultBox.innerHTML = '<span style="color:var(--muted);">현재 차트 캡처 → ' + modelName + ' 분석 중...</span>';
   document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
     const priceCanvas = document.getElementById('priceCanvas');
     const stochCanvas = document.getElementById('stochCanvas');
-    
     const combined = document.createElement('canvas');
     const gap = 12;
     combined.width = priceCanvas.width;
     combined.height = priceCanvas.height + stochCanvas.height + gap;
-    
     const ctx = combined.getContext('2d');
     ctx.fillStyle = '#10161F';
     ctx.fillRect(0, 0, combined.width, combined.height);
-    
     ctx.drawImage(priceCanvas, 0, 0);
     ctx.drawImage(stochCanvas, 0, priceCanvas.height + gap);
-    
-    const dataUrl = combined.toDataURL('image/png');
-    const base64Data = dataUrl.split(',')[1];
 
-    const response = await fetch('https://kis-proxy-server-di40.onrender.com/analyze', {
+    const base64Data = combined.toDataURL('image/png').split(',')[1];
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: base64Data })
     });
-
     const data = await response.json();
-    
-    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-      let aiText = data.candidates[0].content.parts[0].text;
-      aiText = aiText.replace(/\n/g, '<br>');
-      aiResultBox.innerHTML = aiText;
+    let aiText = null;
+
+    if (isClaude) {
+      if (data.content?.[0]?.text) aiText = data.content[0].text;
     } else {
-      aiResultBox.innerHTML = '<span style="color:var(--amber);">AI 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.</span>';
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) aiText = data.candidates[0].content.parts[0].text;
     }
 
+    if (aiText) {
+      aiText = aiText.replace(/\n/g, '<br>');
+      aiResultBox.innerHTML = '<div style="font-size:11px; color:var(--muted); margin-bottom:8px;">모델: <b style="color:' + (isClaude ? 'var(--amber)' : 'var(--cyan)') + '">' + modelName + '</b> (현재 차트)</div>' + aiText;
+    } else {
+      aiResultBox.innerHTML = '<span style="color:var(--amber);">응답 파싱 실패</span>';
+    }
   } catch (error) {
     console.error(error);
-    aiResultBox.innerHTML = '<span style="color:var(--red);">분석 요청 실패. 서버 상태를 확인해주세요.</span>';
+    aiResultBox.innerHTML = '<span style="color:var(--red);">요청 실패</span>';
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
