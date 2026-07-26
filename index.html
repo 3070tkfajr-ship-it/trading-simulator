@@ -509,13 +509,35 @@ function drawPriceChart(visible, upto){
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = upto + 1;
   const candles = session.candles.slice(0, n);
+  // 거래량 배열
+  const vols = [];
+  for (const c of candles) {
+    if (c.v != null && !isNaN(c.v) && c.v > 0) vols.push(c.v);
+  }
+  vols.sort((a, b) => a - b);
 
-   // 이상치(장마감 폭발 봉) 때문에 전체가 안 보이는 것 방지: 상위 5% 제외한 스케일
-  const vols = candles.map(c => c.v).filter(v => v != null && !isNaN(v) && v > 0).sort((a,b) => a-b);
+  // 상위 10% 잘라서 스케일 (장마감 폭발 봉 무시)
   let maxV = 1;
-  if(vols.length){
-    const idx = Math.min(vols.length - 1, Math.floor(vols.length * 0.95));
-    maxV = vols[idx] || vols[vols.length - 1];
+  if (vols.length) {
+    const idx = Math.max(0, Math.floor(vols.length * 0.90) - 1);
+    maxV = vols[idx];
+  }
+
+  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
+  const yAt = v => padT + (1 - Math.min(v, maxV) / maxV) * plotH; // 큰 봉은 천장에 잘림
+  const barW = Math.max(1, plotW / n * 0.6);
+
+  for (let i = 0; i < n; i++) {
+    const c = candles[i];
+    if (c.v == null || isNaN(c.v) || c.v <= 0) continue;
+    const x = xAt(i);
+    const up = c.close >= c.open;
+    const isHigh = avgV > 0 && c.v >= avgV * 1.5;
+    ctx.fillStyle = isHigh
+      ? (up ? '#3ECF8E' : '#E5484D')
+      : (up ? 'rgba(62,207,142,0.45)' : 'rgba(229,72,77,0.45)');
+    const top = yAt(c.v);
+    ctx.fillRect(x - barW / 2, top, barW, padT + plotH - top);
   }
 
   // 최근 20개 평균 (상대거래량 기준선)
