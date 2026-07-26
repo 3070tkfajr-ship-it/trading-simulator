@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>실전 단타 대시보드 & 시뮬레이터 (완전체)</title>
+<style>
+  :root{
+    --bg: #0A0E13; --panel: #10161F; --panel-2: #151C27; --line: #232C38;
+    --text: #DCE4EC; --muted: #6E7B8B; --red: #E5484D; --blue: #3B82F6;
+    --amber: #F5A623; --cyan: #35C9C1; --pink: #E0629E; --grayline: #8A93A0;
+    --good: #3ECF8E; --bad: #E5484D;
+    --mono: 'SFMono-Regular','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans: -apple-system,'Apple SD Gothic Neo','Pretendard',BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
+  .wrap{max-width:1040px;margin:0 auto;padding:18px 16px 60px;}
+  .topbar{ display:flex; align-items:baseline; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  .topbar h1{font-size:17px; font-weight:700; margin:0; letter-spacing:-0.2px;}
+  .topbar h1 span{color:var(--muted); font-weight:500; font-size:12px; display:block; margin-top:3px;}
+  .tape{ font-family:var(--mono); font-size:12.5px; color:var(--grayline); display:flex; gap:14px; align-items:center; }
+  .tape b{color:var(--text); font-weight:700;}
+  .dot{width:7px;height:7px;border-radius:50%; display:inline-block; margin-right:5px;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px;}
+  .panel h2{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px;}
+  .srcbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  textarea{ width:100%; min-height:64px; background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px; font-family:var(--mono); font-size:11.5px; padding:8px; resize:vertical; margin-top:8px; }
+  .fmt{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;}
+  button{ font-family:var(--sans); font-size:13px; font-weight:600; border-radius:8px; padding:9px 14px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); cursor:pointer; transition:background .12s, transform .05s; }
+  button:hover{background:#1B2432;} button:active{transform:scale(.98);} button:disabled{opacity:.35; cursor:not-allowed;}
+  button.primary{background:var(--red); border-color:var(--red); color:#fff;} button.primary:hover{background:#F0575C;}
+  button.buy{background:var(--good); border-color:var(--good); color:#062018; font-weight:700;} button.buy:hover{background:#49E0A0;}
+  button.ghost{background:transparent;}
+  button.live-btn {background:#2962ff; border-color:#2962ff; color:#fff;} button.live-btn:hover {background:#1544cb;}
+  .badge{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-family:var(--mono); padding:4px 9px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+  .badge.live{color:var(--amber); border-color:#4A3B1A;} .badge.real{color:var(--good); border-color:#1C4433;}
+  .chartTitle{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .legend{display:flex; gap:12px; flex-wrap:wrap; font-family:var(--mono); font-size:10.5px; color:var(--muted);}
+  .legend b{display:inline-block; width:16px; height:2px; margin-right:5px; vertical-align:middle; border-radius:2px;}
+  canvas{width:100%; display:block; background:var(--panel-2); border-radius:8px;}
+  #priceCanvas{cursor:crosshair;}
+  .controls{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center;}
+  .warn{color:var(--amber); font-size:12px; font-family:var(--mono);}
+  .resultGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-top:12px;}
+  .stat{background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px;}
+  .stat .k{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-family:var(--mono); font-size:16px; font-weight:700; margin-top:3px;}
+  .up{color:var(--red);} .down{color:var(--blue);}
+  .snapshot{margin-top:12px; font-size:13px; line-height:1.9;}
+  .snapshot code{font-family:var(--mono); background:var(--panel-2); padding:1px 6px; border-radius:5px; font-size:12px;}
+  .scoreCard{display:flex; gap:16px; align-items:center; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px; flex-wrap:wrap;}
+  .scoreCircle{font-family:var(--mono); font-weight:800; font-size:30px; min-width:64px; text-align:center;}
+  .scoreBars{flex:1; min-width:220px; display:flex; flex-direction:column; gap:6px;}
+  .scoreBarRow{display:flex; align-items:center; gap:8px; font-size:11.5px;}
+  .scoreBarRow .lbl{width:92px; color:var(--muted); flex-shrink:0;}
+  .scoreBarTrack{flex:1; background:#1B2432; border-radius:5px; height:8px; overflow:hidden;}
+  .scoreBarFill{height:100%; border-radius:5px;}
+  .scoreBarRow .num{font-family:var(--mono); width:48px; text-align:right; flex-shrink:0;}
+  footer{color:var(--muted); font-size:11px; text-align:center; margin-top:26px; line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1>실전 단타 대시보드 & 시뮬레이터<span>VWAP / EMA(5,9,20,200) / Stochastic RSI — 실시간 모니터링 및 복기 훈련</span></h1>
+    <div class="tape" id="tape">
+      <span><span class="dot" style="background:var(--muted)"></span>대기중</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>데이터 소스 설정</h2>
+    <div class="srcbar">
+      <span id="srcBadge" class="badge live">● 합성(연습용) 데이터</span>
+      <button id="btnLoadReal" class="live-btn">📡 실시간 모니터링 (한투 API)</button>
+      <button id="btnToggleCsv" class="ghost">📁 HTS 과거 데이터 복기 ▾</button>
+      <button id="btnNewRound" class="primary">🎲 과거 합성 차트 연습</button>
+    </div>
+    <div id="csvBox" style="display:none;">
+      <textarea id="csvInput" placeholder="HTS에서 내보낸 분봉 데이터를 복사해서 붙여넣으세요. (날짜,시간,시가,고가,저가,종가,거래량)"></textarea>
+      <div style="margin-top:8px;"><button id="btnLoadCsv">이 데이터로 라운드 시작</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="chartTitle">
+      <h2 style="margin:0;">가격 · VWAP · EMA(5/9/20/200)</h2>
+      <div class="legend">
+        <span><b style="background:var(--amber)"></b>VWAP</span>
+        <span><b style="background:var(--cyan)"></b>EMA5</span>
+        <span><b style="background:var(--pink)"></b>EMA9</span>
+        <span><b style="background:var(--grayline)"></b>EMA20</span>
+        <span><b style="background:#5B6BFF"></b>EMA200</span>
+      </div>
+    </div>
+    <canvas id="priceCanvas" height="360"></canvas>
+    <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
+    <div id="whatIfBox" style="display:none; margin-top:10px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>
+
+    <h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
+    <canvas id="stochCanvas" height="120"></canvas>
+
+    <div class="controls">
+      <button id="btnStep">▶ 다음 1분 보기</button>
+      <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
+      <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
+    </div>
+    <div style="margin-top:10px;">
+      <textarea id="rationale" placeholder="진입 근거 메모 (선택) — 예: VWAP 지지+EMA5/9 골든크로스+StochRSI 반등" style="min-height:40px;"></textarea>
+    </div>
+    <div class="controls">
+      <button id="btnLong" class="buy">🟢 롱(매수) 진입</button>
+      <button id="btnShort" class="primary">🔻 숏(공매도) 진입</button>
+      <button id="btnPass" class="ghost">⏭ 패스(관망)</button>
+    </div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none;">
+    <h2>결과 — 과거 차트가 실제로 갖고 있던 정답</h2>
+    <div id="resultBody"></div>
+    <div class="controls">
+      <button id="btnCopy">📋 요약 복사 (나에게 피드백 요청용)</button>
+      <button id="btnNextRound" class="primary">다음 라운드 ▶</button>
+    </div>
+    <div id="copyStatus" style="font-size:12px; color:var(--good); margin-top:6px; display:none;">복사됨 — 채팅창에 붙여넣어주세요!</div>
+  </div>
+
+</div>
+
+<script>
+/* ---------------- 유틸: 지표 계산 ---------------- */
+function ema(values, period){
+  const out = new Array(values.length).fill(null);
+  if(values.length < period) return out;
+  let seed = 0; for(let i=0;i<period;i++) seed += values[i]; seed/=period;
+  out[period-1] = seed; const k = 2/(period+1); let prev = seed;
+  for(let i=period;i<values.length;i++){ const v = values[i]*k + prev*(1-k); out[i]=v; prev=v; }
+  return out;
+}
+function vwapSeries(candles){
+  const out = new Array(candles.length).fill(null);
+  let cumPV=0, cumV=0;
+  for(let i=0;i<candles.length;i++){
+    const c = candles[i]; const tp = (c.h+c.l+c.c)/3;
+    cumPV += tp*c.v; cumV += c.v;
+    out[i] = cumV>0 ? cumPV/cumV : c.c;
+  }
+  return out;
+}
+function rsiSeries(closes, period){
+  const out = new Array(closes.length).fill(null);
+  if(closes.length<period+1) return out;
+  let gains=0, losses=0;
+  for(let i=1;i<=period;i++){ const d = closes[i]-closes[i-1]; if(d>=0) gains+=d; else losses-=d; }
+  let avgG=gains/period, avgL=losses/period;
+  out[period] = avgL===0?100:100-100/(1+avgG/avgL);
+  for(let i=period+1;i<closes.length;i++){
+    const d = closes[i]-closes[i-1]; const g = d>0?d:0, l = d<0?-d:0;
+    avgG = (avgG*(period-1)+g)/period; avgL = (avgL*(period-1)+l)/period;
+    out[i] = avgL===0?100:100-100/(1+avgG/avgL);
+  }
+  return out;
+}
+function sma(values, period){
+  const out = new Array(values.length).fill(null);
+  for(let i=0;i<values.length;i++){
+    if(values[i]==null) continue; let sum=0, cnt=0, ok=true;
+    for(let k=0;k<period;k++){ const idx=i-k; if(idx<0 || values[idx]==null){ok=false;break;} sum+=values[idx]; cnt++; }
+    if(ok && cnt===period) out[i]=sum/period;
+  }
+  return out;
+}
+function stochRsiSeries(closes){
+  const rsiP=14, stochP=14; const rsi = rsiSeries(closes, rsiP); const rawK = new Array(closes.length).fill(null);
+  for(let i=0;i<closes.length;i++){
+    if(rsi[i]==null) continue; let lo=Infinity, hi=-Infinity, ok=true;
+    for(let k=0;k<stochP;k++){ const idx=i-k; if(idx<0 || rsi[idx]==null){ok=false;break;} lo=Math.min(lo,rsi[idx]); hi=Math.max(hi,rsi[idx]); }
+    if(ok) rawK[i] = hi===lo ? 0 : (rsi[i]-lo)/(hi-lo)*100;
+  }
+  const K = sma(rawK,3); const D = sma(K,3); return {K,D};
+}
+
+/* ---------------- 데이터 파싱 & 생성 ---------------- */
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  }
+}
+function genSyntheticSession(seed){
+  const rnd = mulberry32(seed); const N = 380; const base = 40000 + Math.floor(rnd()*160)*500;
+  let price = base; const candles = []; let regimeLen=0, drift=0;
+  for(let i=0;i<N;i++){
+    if(regimeLen<=0){ regimeLen = 15 + Math.floor(rnd()*35); drift = (rnd()-0.5)*0.0009; }
+    regimeLen--;
+    const tOfDay = i/N; let volMult = 1.0;
+    if(tOfDay<0.08) volMult=1.8; else if(tOfDay>0.92) volMult=1.5; else if(tOfDay>0.45 && tOfDay<0.58) volMult=0.55;
+    const noise = (rnd()-0.5)*2* (price*0.0018) * volMult;
+    const open = price; let close = open + drift*open + noise;
+    if(close<base*0.85) close = base*0.85 + rnd()*50;
+    const wick = Math.abs(noise)*(0.4+rnd()*0.8) + price*0.0004;
+    const high = Math.max(open,close) + wick*rnd(); const low = Math.min(open,close) - wick*rnd();
+    const baseVol = 8000 + rnd()*6000; const volMultV = volMult*(1+Math.abs(close-open)/price*40);
+    const volume = Math.max(500, Math.round(baseVol*volMultV*(0.6+rnd()*0.8)));
+    candles.push({t:i, open, high, low, close: close, o:open, h:high, l:low, c:close, v:volume});
+    price = close;
+  }
+  return {label:`합성 종목 #${seed}`, candles};
+}
+function parseCsv(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0); const candles = []; let idx=0;
+  for(const line of lines){
+    const parts = line.split(/[,\t]/).map(s=>s.trim()).filter(s=>s.length>0); const numericTail = parts.slice(-5);
+    if(numericTail.some(p=>isNaN(parseFloat(p.replace(/[^\d.\-]/g,''))))) continue;
+    let o,h,l,c,v;
+    if(parts.length>=6){ [o,h,l,c,v] = numericTail.map(p=>parseFloat(p.replace(/,/g,''))); } 
+    else if(parts.length===5){ [o,h,l,c,v] = parts.map(p=>parseFloat(p.replace(/,/g,''))); } else continue;
+    if([o,h,l,c,v].some(x=>isNaN(x))) continue;
+    candles.push({t:idx, open:o, high:h, low:l, close:c, o,h,l,c,v}); idx++;
+  }
+  return candles;
+}
+
+/* ---------------- 상태 & 렌더링 ---------------- */
+let session = null; let indicators = null; let cutoff = 0; let selectedIdx = 0; let maxCutoffReached = 0;
+let lastPriceLayout = null; let bought = false; let direction = null; let entryIdx = -1;
+let roundNo = 0; let dataMode = 'synthetic'; let whatIfMarkerIdx = null;
+
+const priceCanvas = document.getElementById('priceCanvas'); const stochCanvas = document.getElementById('stochCanvas');
+const tape = document.getElementById('tape'); const srcBadge = document.getElementById('srcBadge');
+const closeWarn = document.getElementById('closeWarn'); const resultPanel = document.getElementById('resultPanel');
+const resultBody = document.getElementById('resultBody');
+
+function computeIndicators(candles){
+  const closes = candles.map(c=>c.close);
+  return { ema5: ema(closes,5), ema9: ema(closes,9), ema20: ema(closes,20), ema200: ema(closes,200), vwap: vwapSeries(candles), stoch: stochRsiSeries(closes) };
+}
+
+function startRound(newSession){
+  session = newSession; indicators = computeIndicators(session.candles); roundNo++;
+  bought=false; direction=null; entryIdx=-1; resultPanel.style.display='none';
+  whatIfMarkerIdx = null; document.getElementById('whatIfBox').style.display='none';
+  document.getElementById('rationale').value=''; document.getElementById('rationale').disabled=false;
+  
+  const N = session.candles.length;
+  // 실시간 모니터링 모드면 현재까지 전부 보여주기
+  if(dataMode === 'real_live') {
+    cutoff = N - 1;
+  } else {
+    const minCut = Math.min(220, Math.floor(N*0.55)); const maxCut = N-35;
+    cutoff = minCut + Math.floor(Math.random()*Math.max(1,(maxCut-minCut)));
+  }
+  selectedIdx = cutoff;
+  maxCutoffReached = cutoff;
+  
+  // 버튼 활성화
+  const isLive = (dataMode === 'real_live');
+  document.getElementById('btnLong').disabled = isLive;
+  document.getElementById('btnShort').disabled = isLive;
+  document.getElementById('btnPass').disabled = isLive;
+  document.getElementById('btnStep').disabled = isLive;
+  document.getElementById('btnRewindReset').disabled = isLive;
+  if(isLive) document.getElementById('rationale').disabled = true;
+
+  render();
+}
+
+function fmtTime(i){ const m = 9*60+i; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+function render(){
+  const c = session.candles;
+  const revealEnd = direction ? Math.min(entryIdx+30, c.length-1) : cutoff;
+  const visible = c.slice(0, revealEnd+1); const last = visible[visible.length-1];
+
+  if(dataMode === 'real_live') {
+    srcBadge.className = 'badge live'; srcBadge.textContent = '✅ 실시간 모니터링' + ` · ${session.label}`;
+  } else if(dataMode === 'real') {
+    srcBadge.className = 'badge real'; srcBadge.textContent = '✅ 실데이터 복기' + ` · ${session.label}`;
+  } else {
+    srcBadge.className = 'badge live'; srcBadge.textContent = '● 합성(연습용) 데이터' + ` · ${session.label}`;
+  }
+
+  const chg = visible.length > 1 ? ((last.close - visible[0].open)/visible[0].open*100) : 0;
+  tape.innerHTML = `<span><span class="dot" style="background:var(--amber)"></span>라운드 ${roundNo}</span>
+    <span>${dataMode==='real_live' ? '실시간 연동 중' : fmtTime(revealEnd)}</span>
+    <span>현재가 <b>${Math.round(last.close).toLocaleString()}</b></span>
+    <span class="${chg>=0?'up':'down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>
+    <span>VWAP <b>${Math.round(indicators.vwap[revealEnd]).toLocaleString()}</b></span>`;
+
+  const remaining = c.length - cutoff;
+  closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction ? 'inline' : 'none';
+
+  drawPriceChart(visible, revealEnd);
+  drawStochChart(revealEnd);
+
+  const selInfo = document.getElementById('selInfo');
+  if(dataMode === 'real_live'){
+    selInfo.innerHTML = `실시간 연동 중에는 타점 연습이 제한되며, <b>차트 모니터링</b>만 가능합니다.`;
+  } else if(!direction){
+    const rewound = cutoff < maxCutoffReached;
+    selInfo.innerHTML = `보고 있는 시점: <b style="color:var(--text)">${fmtTime(cutoff)}</b>`
+      + (rewound ? ` — <span style="color:var(--amber)">최대 진행 시점(${fmtTime(maxCutoffReached)})에서 되감은 상태</span>. "되감기 해제"를 누르면 원래 시점으로 돌아갑니다.` : ' (가장 최근 시점)')
+      + ` 차트를 클릭하면 이미 지나온 구간(${fmtTime(0)}~${fmtTime(maxCutoffReached)}) 내에서 <u>그 시점으로 되감깁니다</u> — 그 이후 캔들은 화면에서 사라져서, 미래를 미리 보고 고르는 게 아니에요.`;
+  } else {
+    selInfo.innerHTML = `정답 공개됨 — 위 차트에 실제 이후 흐름이 펼쳐져 있어요. <u>아무 지점이나 클릭</u>하면 그 시점에서 <b>롱을 골랐을 때/숏을 골랐을 때 점수</b>를 각각 보여드려요.`;
+  }
+}
+
+function drawPriceChart(visible, upto){
+  const ctx = priceCanvas.getContext('2d'); const W = priceCanvas.clientWidth || 1000; const H = 360;
+  priceCanvas.width = W*2; priceCanvas.height=H*2; ctx.scale(2,2); ctx.clearRect(0,0,W,H);
+  const n = visible.length; const padL=54, padR=10, padT=10, padB=10; const plotW = W-padL-padR, plotH = H-padT-padB;
+  lastPriceLayout = {padL, plotW, n};
+  let lo=Infinity, hi=-Infinity; for(const cd of visible){ lo=Math.min(lo,cd.low); hi=Math.max(hi,cd.high); }
+  for(const arr of [indicators.ema20, indicators.ema200, indicators.vwap]){
+    for(let i=0;i<=upto;i++){ if(arr[i]!=null){ lo=Math.min(lo,arr[i]); hi=Math.max(hi,arr[i]); } }
+  }
+  const pad = (hi-lo)*0.08 || 10; lo-=pad; hi+=pad;
+  const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = p => padT + (1-(p-lo)/(hi-lo))*plotH;
+
+  ctx.strokeStyle='#1C2530'; ctx.fillStyle='#5B6673'; ctx.font='10px monospace';
+  for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(Math.round(hi - g*(hi-lo)/4).toLocaleString(), 4, yy+3); }
+
+  const cw = Math.max(1.5, plotW/n*0.6);
+  for(let i=0;i<n;i++){
+    const cd = visible[i]; const x = xAt(i); const up = cd.close>=cd.open;
+    ctx.strokeStyle = up?'#E5484D':'#3B82F6'; ctx.fillStyle = up?'#E5484D':'#3B82F6';
+    ctx.beginPath(); ctx.moveTo(x,yAt(cd.high)); ctx.lineTo(x,yAt(cd.low)); ctx.stroke();
+    const yo=yAt(cd.open), yc=yAt(cd.close); ctx.fillRect(x-cw/2, Math.min(yo,yc), cw, Math.max(1,Math.abs(yo-yc)));
+  }
+
+  function drawLine(arr, color, width){
+    ctx.strokeStyle=color; ctx.lineWidth=width; ctx.beginPath(); let started=false;
+    for(let i=0;i<n;i++){ if(arr[i]==null) continue; const x=xAt(i), y=yAt(arr[i]); if(!started){ctx.moveTo(x,y); started=true;} else ctx.lineTo(x,y); } ctx.stroke();
+  }
+  drawLine(indicators.vwap.slice(0,n), '#F5A623', 1.6); drawLine(indicators.ema5.slice(0,n), '#35C9C1', 1.1); drawLine(indicators.ema9.slice(0,n), '#E0629E', 1.1); drawLine(indicators.ema20.slice(0,n), '#8A93A0', 1.3); drawLine(indicators.ema200.slice(0,n), '#5B6BFF', 1.8);
+
+  if(!direction && selectedIdx!=null && selectedIdx>=0 && selectedIdx<n && dataMode!=='real_live'){
+    const x = xAt(selectedIdx); ctx.save(); ctx.strokeStyle = '#F5A623'; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,H-padB); ctx.stroke(); ctx.restore();
+  }
+
+  if(direction && direction!=='pass' && entryIdx>=0 && entryIdx<n){
+    const x=xAt(entryIdx), y=yAt(visible[entryIdx].close); const isLong = direction==='long';
+    ctx.fillStyle = isLong ? '#3ECF8E' : '#E5484D';
+    if(isLong){ ctx.beginPath(); ctx.moveTo(x,y+14); ctx.lineTo(x-6,y+24); ctx.lineTo(x+6,y+24); ctx.fill(); } 
+    else { ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x-6,y-24); ctx.lineTo(x+6,y-24); ctx.fill(); }
+    ctx.font='10px sans-serif'; ctx.fillText(isLong?'롱':'숏', x-8, isLong? y+35 : y-28);
+  }
+
+  if(direction && whatIfMarkerIdx!=null && whatIfMarkerIdx>=0 && whatIfMarkerIdx<n){
+    const x = xAt(whatIfMarkerIdx);
+    ctx.save(); ctx.strokeStyle = '#DCE4EC'; ctx.setLineDash([4,3]); ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,H-padB); ctx.stroke(); ctx.restore();
+    ctx.fillStyle='#DCE4EC'; ctx.font='10px sans-serif'; ctx.fillText('복기', x-9, padT+11);
+  }
+}
+
+function drawStochChart(upto){
+  const ctx = stochCanvas.getContext('2d'); const W = stochCanvas.clientWidth || 1000; const H = 120;
+  stochCanvas.width=W*2; stochCanvas.height=H*2; ctx.scale(2,2); ctx.clearRect(0,0,W,H);
+  const padL=54, padR=10, padT=8, padB=8; const plotW=W-padL-padR, plotH=H-padT-padB; const n = upto+1;
+  const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = v => padT + (1-v/100)*plotH;
+
+  ctx.strokeStyle='#1C2530'; [20,50,80].forEach(v=>{ ctx.beginPath(); ctx.moveTo(padL,yAt(v)); ctx.lineTo(W-padR,yAt(v)); ctx.stroke(); });
+  ctx.fillStyle='#5B6673'; ctx.font='10px monospace'; ctx.fillText('80',4,yAt(80)+3); ctx.fillText('20',4,yAt(20)+3);
+
+  function drawLine(arr,color){
+    ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.beginPath(); let started=false;
+    for(let i=0;i<n;i++){ if(arr[i]==null) continue; const x=xAt(i), y=yAt(arr[i]); if(!started){ctx.moveTo(x,y); started=true;} else ctx.lineTo(x,y); } ctx.stroke();
+  }
+  drawLine(indicators.stoch.K.slice(0,n), '#35C9C1'); drawLine(indicators.stoch.D.slice(0,n), '#E0629E');
+}
+
+/* ---------------- 상호작용 및 결과 처리 ---------------- */
+document.getElementById('btnStep').addEventListener('click', ()=>{
+  if(direction || dataMode==='real_live') return;
+  if(cutoff < session.candles.length-2){ cutoff++; selectedIdx = cutoff; maxCutoffReached = Math.max(maxCutoffReached, cutoff); render(); }
+});
+
+function takePosition(dir){
+  if(direction || dataMode==='real_live') return; direction = dir; bought = (dir!=='pass'); entryIdx = selectedIdx;
+  document.getElementById('btnStep').disabled=true; document.getElementById('btnRewindReset').disabled=true;
+  document.getElementById('btnLong').disabled=true;
+  document.getElementById('btnShort').disabled=true; document.getElementById('btnPass').disabled=true;
+  render(); showResult();
+}
+document.getElementById('btnLong').addEventListener('click', ()=>takePosition('long'));
+document.getElementById('btnShort').addEventListener('click', ()=>takePosition('short'));
+document.getElementById('btnPass').addEventListener('click', ()=>takePosition('pass'));
+
+priceCanvas.addEventListener('click', (e)=>{
+  if(!lastPriceLayout || !session || dataMode==='real_live') return;
+  const rect = priceCanvas.getBoundingClientRect(); const xCss = e.clientX - rect.left;
+  const {padL, plotW, n} = lastPriceLayout; const idxFloat = (xCss-padL)/plotW*(n-1);
+  let idx = Math.round(idxFloat);
+
+  if(!direction){
+    idx = Math.max(0, Math.min(maxCutoffReached, idx));
+    cutoff = idx; selectedIdx = idx; render(); // 클릭 = 그 시점으로 되감기. 이미 지나온(maxCutoffReached 이하) 범위 내에서만 이동 가능 — 미래를 미리 보고 고르는 게 아님
+  } else {
+    idx = Math.max(0, Math.min(n-1, idx));
+    showWhatIf(idx);
+  }
+});
+
+document.getElementById('btnRewindReset').addEventListener('click', ()=>{
+  if(direction || dataMode==='real_live') return;
+  cutoff = maxCutoffReached; selectedIdx = cutoff; render();
+});
+
+function computeOutcomeStats(dir, idx){
+  const c = session.candles;
+  const entry = c[idx];
+  const horizon = Math.min(30, c.length-1-idx);
+  const future = c.slice(idx, idx+horizon+1);
+  const sign = dir==='short' ? -1 : 1;
+  let mfe=-Infinity, mae=Infinity;
+  for(const f of future){ mfe=Math.max(mfe,f.high); mae=Math.min(mae,f.low); }
+  const mfePct = dir==='short' ? -((mae-entry.close)/entry.close*100) : ((mfe-entry.close)/entry.close*100);
+  const maePct = dir==='short' ? -((mfe-entry.close)/entry.close*100) : ((mae-entry.close)/entry.close*100);
+  function at(minAfter){ const i=Math.min(idx+minAfter, c.length-1); const p=c[i].close; return {p, pct: sign*(p-entry.close)/entry.close*100}; }
+  return { m5:at(5), m10:at(10), m20:at(20), m30:at(30), mfePct, maePct };
+}
+
+function showWhatIf(idx){
+  whatIfMarkerIdx = idx;
+  render();
+
+  const longStats = computeOutcomeStats('long', idx);
+  const shortStats = computeOutcomeStats('short', idx);
+  const longScore = computeScore('long', idx, longStats.m30, longStats.mfePct, longStats.maePct);
+  const shortScore = computeScore('short', idx, shortStats.m30, shortStats.mfePct, shortStats.maePct);
+
+  const box = document.getElementById('whatIfBox');
+  box.style.display='block';
+  function sideHtml(label, color, score, stats){
+    return `
+      <div style="flex:1; min-width:160px;">
+        <div style="color:${color}; font-weight:700; font-size:15px;">${label} → ${score.total}점 <span style="font-size:11px; font-weight:600;">(${score.grade.label})</span></div>
+        <div style="font-size:11px; color:var(--muted); margin:2px 0 6px;">30분 손익 ${stats.m30.pct>=0?'+':''}${stats.m30.pct.toFixed(2)}% · MAE ${stats.maePct.toFixed(2)}%</div>
+        <div style="font-size:10.5px; color:var(--muted); line-height:1.6;">${score.breakdown.map(b=>`${b.label} ${b.score}/${b.max}`).join(' · ')}</div>
+      </div>`;
+  }
+  box.innerHTML = `
+    <div style="font-weight:700; margin-bottom:10px;">복기 — <code>${fmtTime(idx)}</code> 시점에서 골랐다면</div>
+    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+      ${sideHtml('롱', 'var(--good)', longScore, longStats)}
+      ${sideHtml('숏', 'var(--red)', shortScore, shortStats)}
+    </div>
+    <div class="fmt" style="margin-top:8px;">내 실제 진입(${fmtTime(entryIdx)}, ${direction==='long'?'롱':direction==='short'?'숏':'관망'})과 비교해서, 다른 시점이었다면 어땠을지 확인해보세요. 차트를 다시 클릭하면 다른 지점으로 바꿀 수 있어요.</div>
+  `;
+}
+
+let lastSummary = '';
+function findBestEntry(dir, candles, refIdx, lookback=60, horizon=30){
+  const start = Math.max(0, refIdx-lookback); let best = {idx:refIdx, pct:-Infinity};
+  for(let i=start;i<=refIdx;i++){
+    const entryClose = candles[i].close; const endIdx = Math.min(i+horizon, candles.length-1);
+    let extreme = dir==='long' ? -Infinity : Infinity;
+    for(let j=i;j<=endIdx;j++){ if(dir==='long') extreme = Math.max(extreme, candles[j].high); else extreme = Math.min(extreme, candles[j].low); }
+    const pct = dir==='long' ? (extreme-entryClose)/entryClose*100 : (entryClose-extreme)/entryClose*100;
+    if(pct>best.pct) best = {idx:i, pct};
+  }
+  return best;
+}
+
+function analyzeContext(entryIdx){
+  const c = session.candles;
+  const closes = c.map(x=>x.close);
+  const vwap = indicators.vwap, ema5=indicators.ema5, ema9=indicators.ema9;
+  const stochK = indicators.stoch.K;
+
+  // VWAP 위/아래 지속성 (최근 10개 캔들 중 몇 %가 VWAP 위였는지)
+  let above=0, tot=0;
+  for(let i=Math.max(0,entryIdx-9); i<=entryIdx; i++){ if(vwap[i]!=null){ tot++; if(closes[i]>=vwap[i]) above++; } }
+  const vwapPersist = tot? above/tot : null;
+
+  // EMA5/9 골든/데드 크로스 최근성 (최근 15개 캔들 내에서 가장 최근 크로스)
+  let crossAgo=null, crossType=null;
+  for(let k=0;k<15;k++){
+    const i = entryIdx-k;
+    if(i-1<0 || ema5[i]==null || ema9[i]==null || ema5[i-1]==null || ema9[i-1]==null) continue;
+    const prevDiff = ema5[i-1]-ema9[i-1], curDiff = ema5[i]-ema9[i];
+    if(prevDiff!==0 && curDiff!==0 && Math.sign(prevDiff)!==Math.sign(curDiff)){
+      crossAgo = k; crossType = curDiff>0 ? 'golden' : 'dead'; break;
+    }
+  }
+
+  // StochRSI 최근 추세 (4캔들 전 대비 변화량)
+  let stochDelta=null;
+  if(stochK[entryIdx]!=null && entryIdx-4>=0 && stochK[entryIdx-4]!=null) stochDelta = stochK[entryIdx]-stochK[entryIdx-4];
+
+  // 거래량 배수 (직전 20개 평균 대비)
+  let volRatio=null; let sumV=0,cnt=0;
+  for(let i=Math.max(0,entryIdx-20); i<entryIdx; i++){ sumV+=c[i].v; cnt++; }
+  if(cnt>0) volRatio = c[entryIdx].v/(sumV/cnt);
+
+  return {vwapPersist, crossAgo, crossType, stochDelta, volRatio};
+}
+
+function buildNarrative(direction, entryIdx, m30, mfePct, maePct){
+  const c = session.candles;
+  const price = c[entryIdx].close;
+  const vwapNow = indicators.vwap[entryIdx];
+  const e5=indicators.ema5[entryIdx], e9=indicators.ema9[entryIdx], e20=indicators.ema20[entryIdx], e200=indicators.ema200[entryIdx];
+  const kK=indicators.stoch.K[entryIdx];
+  const ctx = analyzeContext(entryIdx);
+  const vsVwapPct = vwapNow ? (price-vwapNow)/vwapNow*100 : null;
+
+  let align='혼조';
+  if(e5!=null&&e9!=null&&e20!=null&&e200!=null){
+    if(e5>e9&&e9>e20&&e20>e200) align='정배열';
+    else if(e5<e9&&e9<e20&&e20<e200) align='역배열';
+  }
+
+  const lines = [];
+
+  // 1. 위치 요약 (VWAP 대비 + 지속성)
+  if(vsVwapPct==null) lines.push('VWAP 계산에 필요한 데이터가 아직 충분하지 않은 초반 구간이었습니다.');
+  else if(Math.abs(vsVwapPct)<0.15) lines.push(`가격이 <u>VWAP 바로 근처(${vsVwapPct>=0?'+':''}${vsVwapPct.toFixed(2)}%)</u>에 붙어있어서, 이 라인이 지지로 작동할지 저항으로 작동할지 애매하게 걸쳐있는 자리였습니다.`);
+  else if(vsVwapPct>0) lines.push(`가격은 <u>VWAP보다 ${vsVwapPct.toFixed(2)}% 위</u>에서 거래되고 있었고, 직전 10개 캔들 중 <u>${Math.round((ctx.vwapPersist||0)*100)}%</u>가 VWAP 위쪽에서 마감돼 이 자리를 지지선처럼 쓰고 있었습니다.`);
+  else lines.push(`가격은 <u>VWAP보다 ${Math.abs(vsVwapPct).toFixed(2)}% 아래</u>로 눌려있었고, 직전 10개 캔들 중 <u>${Math.round((1-(ctx.vwapPersist||0))*100)}%</u>가 VWAP 아래쪽에서 마감돼 VWAP이 저항으로 작용하는 흐름이었습니다.`);
+
+  // 2. EMA 배열 + 크로스
+  let emaDesc;
+  if(align==='정배열') emaDesc = `EMA는 <u>5&gt;9&gt;20&gt;200 정배열</u> 상태로, 단기·중기 추세가 모두 상승 쪽으로 정렬돼 있었습니다.`;
+  else if(align==='역배열') emaDesc = `EMA는 <u>5&lt;9&lt;20&lt;200 역배열</u> 상태로, 단기·중기 추세가 모두 하락 쪽으로 정렬돼 있었습니다.`;
+  else emaDesc = `EMA 배열은 <u>정배열도 역배열도 아닌 혼조</u> 상태라, 추세 자체의 방향성이 뚜렷하지 않았습니다.`;
+  if(ctx.crossAgo!=null){
+    emaDesc += ` 게다가 <u>${ctx.crossAgo===0?'바로 이 캔들에서':ctx.crossAgo+'분 전'} EMA5/9 ${ctx.crossType==='golden'?'골든크로스':'데드크로스'}</u>가 나와서, ${ctx.crossType==='golden'?'단기 상승 전환':'단기 하락 전환'} 신호가 막 확인된 시점이었습니다.`;
+  }
+  lines.push(emaDesc);
+
+  // 3. StochRSI
+  let stochDesc;
+  if(kK==null) stochDesc = 'Stochastic RSI 계산에 필요한 데이터가 아직 부족한 구간입니다.';
+  else if(kK<20) stochDesc = `Stochastic RSI는 <u>과매도권(${kK.toFixed(1)})</u>에 있었습니다 — 이 구간은 대개 매도세가 이미 많이 소진된 자리라, 신규 숏을 여는 것보다는 반등 여부를 지켜보거나 롱 전환을 고려하는 쪽이 정석입니다.`;
+  else if(kK>80) stochDesc = `Stochastic RSI는 <u>과매수권(${kK.toFixed(1)})</u>에 있었습니다 — 이 구간은 대개 매수세가 이미 많이 소진된 자리라, 신규 롱을 여는 것보다는 되돌림 여부를 지켜보거나 숏 전환을 고려하는 쪽이 정석입니다.`;
+  else stochDesc = `Stochastic RSI는 <u>중립 구간(${kK.toFixed(1)})</u>에 있어서, 이 지표만으로는 뚜렷한 방향 근거가 되지 못하는 자리였습니다.`;
+  if(ctx.stochDelta!=null) stochDesc += ` (직전 4분 대비 <u>${ctx.stochDelta>=0?'+':''}${ctx.stochDelta.toFixed(1)}p</u>로 ${ctx.stochDelta>=0?'상승':'하락'} 중)`;
+  lines.push(stochDesc);
+
+  // 4. 거래량
+  if(ctx.volRatio!=null){
+    if(ctx.volRatio>1.5) lines.push(`진입 캔들의 거래량은 직전 20분 평균 대비 <u>${ctx.volRatio.toFixed(1)}배</u>로 크게 실렸습니다 — 방향에 실제 힘(매수/매도세)이 붙었을 가능성이 있는 자리였다는 뜻입니다.`);
+    else if(ctx.volRatio<0.6) lines.push(`반면 거래량은 평균 대비 <u>${ctx.volRatio.toFixed(1)}배</u>로 오히려 줄어들어 있었습니다 — 힘이 실리지 않은 채 가격만 움직이는, 다소 신뢰도가 낮은 구간일 수 있습니다.`);
+    else lines.push(`거래량은 평균과 비슷한 수준(<u>${ctx.volRatio.toFixed(1)}배</u>)이라, 특별히 힘이 실리거나 빠진 신호는 없었습니다.`);
+  }
+
+  // 5. 종합 제안 vs 실제 선택
+  let suggestion='관망';
+  if(align==='정배열' && (vsVwapPct==null || vsVwapPct>=-0.1) && !(kK>80)) suggestion='롱';
+  else if(align==='역배열' && (vsVwapPct==null || vsVwapPct<=0.1) && !(kK<20)) suggestion='숏';
+  const dirLabel = direction==='long'?'롱':direction==='short'?'숏':'관망';
+  lines.push(`위 조건들을 종합하면 교과서적으로는 <u>${suggestion}</u> 쪽에 조금 더 무게가 실리는 자리였습니다. 사용자님은 <u>${dirLabel}</u>을 선택하셨는데, 이는 그 판단과 <u>${suggestion===dirLabel?'같은 방향':'다른 방향'}</u>이었습니다.`);
+
+  // 6. 결과와의 정합성
+  const finalPct = m30.pct;
+  let resultDesc;
+  if(direction==='pass'){
+    resultDesc = `실제로는 이후 30분간 <u>${finalPct>=0?'+':''}${finalPct.toFixed(2)}%(롱 기준)</u> 움직였습니다. 관망을 선택했기 때문에 이 움직임은 놓쳤지만, 근거가 애매했던 자리였다면 반대 방향 손실도 피한 셈이라 나쁘지 않은 선택입니다.`;
+  } else {
+    resultDesc = `실제로는 이후 30분간 <u>${finalPct>=0?'+':''}${finalPct.toFixed(2)}%</u> 움직였고, 중간에 최대 <u>${maePct.toFixed(2)}%</u>까지 반대 방향으로 밀린 구간이 있었습니다. `;
+    if(finalPct>=0 && suggestion===dirLabel) resultDesc += `근거(지표 정렬)와 결과(수익)가 <u>같은 방향</u>으로 맞아떨어진, 논리적으로 재현 가능성이 높은 케이스에 가깝습니다.`;
+    else if(finalPct>=0 && suggestion!==dirLabel) resultDesc += `다만 지표 근거는 오히려 반대이거나 애매했던 자리라, 이번 수익은 <u>근거보다 결과가 앞선(운이 좋았을 수 있는)</u> 케이스로 보는 게 안전합니다. 같은 조건을 반복하면 다음엔 결과가 다를 수 있어요.`;
+    else if(finalPct<0 && suggestion===dirLabel) resultDesc += `근거 자체는 맞는 방향이었는데 <u>단기 노이즈에 흔들린</u> 경우일 수 있습니다 — 진입 타이밍을 조금 더 기다리거나 손절선을 여유 있게 뒀다면 결과가 달랐을 수도 있습니다.`;
+    else resultDesc += `근거도 약했고 결과도 안 좋았던 자리이니, <u>이 지표 조합에서 이 방향으로 들어가는 패턴</u>은 다음번엔 피하는 게 좋겠습니다.`;
+  }
+  lines.push(resultDesc);
+
+  return lines;
+}
+
+function computeScore(direction, entryIdx, m30, mfePct, maePct){
+  const c = session.candles;
+  const price = c[entryIdx].close;
+  const vwapNow = indicators.vwap[entryIdx];
+  const e5=indicators.ema5[entryIdx], e9=indicators.ema9[entryIdx], e20=indicators.ema20[entryIdx], e200=indicators.ema200[entryIdx];
+  const kK=indicators.stoch.K[entryIdx];
+  const vsVwapPct = vwapNow ? (price-vwapNow)/vwapNow*100 : null;
+  let align='혼조';
+  if(e5!=null&&e9!=null&&e20!=null&&e200!=null){
+    if(e5>e9&&e9>e20&&e20>e200) align='정배열';
+    else if(e5<e9&&e9<e20&&e20<e200) align='역배열';
+  }
+
+  if(direction==='pass'){
+    const bestL = findBestEntry('long', c, entryIdx);
+    const bestS = findBestEntry('short', c, entryIdx);
+    const maxBest = Math.max(bestL.pct, bestS.pct);
+    const passScore = Math.round(Math.max(30, Math.min(95, 95 - (maxBest-0.3)*35)));
+    let note;
+    if(maxBest<=0.3) note = `이 구간은 롱 기준 최대 +${bestL.pct.toFixed(2)}%, 숏 기준 최대 +${bestS.pct.toFixed(2)}%로 실제로 큰 기회가 없던 구간이었습니다 — 관망이 합리적인 선택이었습니다.`;
+    else if(maxBest<=1.0) note = `이 구간엔 롱 +${bestL.pct.toFixed(2)}% / 숏 +${bestS.pct.toFixed(2)}% 정도의 기회가 있었습니다 — 놓친 게 아주 크진 않지만, 약간의 기회비용은 있었습니다.`;
+    else note = `이 구간엔 롱 +${bestL.pct.toFixed(2)}% / 숏 +${bestS.pct.toFixed(2)}%의 꽤 큰 기회가 있었습니다 — 관망 자체가 틀린 건 아니지만, 근거가 있었다면 놓치기엔 아쉬운 구간이었습니다.`;
+    return {
+      total: passScore, grade: gradeOf(passScore),
+      breakdown: [{label:'기회비용 최소화', score:passScore, max:95}],
+      note
+    };
+  }
+
+  const dirLabel = direction==='long'?'롱':'숏';
+
+  // 1. 결과 활용도 (30점): 실제 30분 손익 / 이론상 최적 타점 수익
+  const best = findBestEntry(direction, c, entryIdx);
+  const bestPct = Math.max(best.pct, 0.3); // 분모 바닥값 (변동성 거의 없던 구간 왜곡 방지)
+  const resultRatio = Math.max(0, Math.min(1, m30.pct / bestPct));
+  const scoreA = Math.round(resultRatio*30);
+
+  // 2. 리스크 관리 (25점): MAE가 작을수록 고득점
+  const riskRatio = Math.max(0, Math.min(1, 1 - Math.abs(maePct)/1.2));
+  const scoreB = Math.round(riskRatio*25);
+
+  // 3. 근거 정합성 (25점): VWAP/EMA/StochRSI 3개 중 방향과 일치하는 개수
+  let agree=0;
+  if(direction==='long'){
+    if(vsVwapPct==null || vsVwapPct>=-0.1) agree++;
+    if(align==='정배열') agree++;
+    if(!(kK>80)) agree++;
+  } else {
+    if(vsVwapPct==null || vsVwapPct<=0.1) agree++;
+    if(align==='역배열') agree++;
+    if(!(kK<20)) agree++;
+  }
+  const scoreC = Math.round((agree/3)*25);
+
+  // 4. 타이밍 정밀도 (20점): 최적 타점과의 시간 차이
+  const diffMin = Math.abs(entryIdx-best.idx);
+  const timingRatio = Math.max(0, Math.min(1, 1 - diffMin/30));
+  const scoreD = Math.round(timingRatio*20);
+
+  const rawTotal = scoreA+scoreB+scoreC+scoreD;
+  const total = Math.min(96, rawTotal); // 최적 타점이라도 100점은 주지 않음 (사후 확정 정보이기 때문)
+
+  return {
+    total, grade: gradeOf(total),
+    breakdown: [
+      {label:'결과 활용도', score:scoreA, max:30},
+      {label:'리스크 관리', score:scoreB, max:25},
+      {label:'근거 정합성', score:scoreC, max:25},
+      {label:'타이밍 정밀도', score:scoreD, max:20}
+    ],
+    note: diffMin===0
+      ? `참고로 이 순간이 이 구간의 이론상 최적 ${dirLabel} 타점과 정확히 일치했습니다. 다만 그 타점도 사후에 확정된 정보라, 실전에서 그 확신을 갖고 들어가긴 어려웠을 거라 100점을 드리진 않습니다.`
+      : `이론상 최적 ${dirLabel} 타점(${fmtTime(best.idx)})과는 ${diffMin}분 차이가 있었습니다.`
+  };
+}
+function gradeOf(score){
+  if(score>=85) return {label:'S', desc:'거의 교과서적인 판단'};
+  if(score>=70) return {label:'A', desc:'좋은 판단'};
+  if(score>=55) return {label:'B', desc:'평범, 개선 여지 있음'};
+  if(score>=40) return {label:'C', desc:'근거 또는 리스크관리 부족'};
+  return {label:'D', desc:'근거가 약한 진입'};
+}
+
+function showResult(){
+  const c = session.candles; const entry = c[entryIdx]; const horizon = Math.min(30, c.length-1-entryIdx);
+  const future = c.slice(entryIdx, entryIdx+horizon+1); const sign = direction==='short' ? -1 : 1;
+  let mfe=-Infinity, mae=Infinity;
+  for(const f of future){ mfe=Math.max(mfe,f.high); mae=Math.min(mae,f.low); }
+  const mfePct = direction==='short' ? -((mae-entry.close)/entry.close*100) : ((mfe-entry.close)/entry.close*100);
+  const maePct = direction==='short' ? -((mfe-entry.close)/entry.close*100) : ((mae-entry.close)/entry.close*100);
+
+  function at(minAfter){ const idx = Math.min(entryIdx+minAfter, c.length-1); const p = c[idx].close; return {p, pct: sign*(p-entry.close)/entry.close*100}; }
+  const m5=at(5), m10=at(10), m20=at(20), m30=at(30);
+  const vwapNow = indicators.vwap[entryIdx]; const e5=indicators.ema5[entryIdx], e9=indicators.ema9[entryIdx], e20=indicators.ema20[entryIdx], e200=indicators.ema200[entryIdx];
+  const kK=indicators.stoch.K[entryIdx], kD=indicators.stoch.D[entryIdx];
+  let align = '혼조'; if(e5!=null && e9!=null && e20!=null && e200!=null){ if(e5>e9 && e9>e20 && e20>e200) align='정배열'; else if(e5<e9 && e9<e20 && e20<e200) align='역배열'; }
+  let stochState = '데이터 부족'; if(kK!=null) stochState = kK<20 ? `과매도권 (${kK.toFixed(1)})` : kK>80 ? `과매수권 (${kK.toFixed(1)})` : `중립 (${kK.toFixed(1)})`;
+  const vsVwap = vwapNow ? ((entry.close-vwapNow)/vwapNow*100) : null;
+  const dirLabel = direction==='long' ? '롱(매수)' : direction==='short' ? '숏(공매도)' : '관망(패스)';
+  const rationale = document.getElementById('rationale').value.trim();
+
+  let bestHtml = '', bestText = '';
+  if(direction==='long' || direction==='short'){
+    const best = findBestEntry(direction, c, entryIdx); const diff = entryIdx - best.idx;
+    bestHtml = `<b>이 구간에서 가장 좋았던 ${dirLabel} 타점</b><br><code>${fmtTime(best.idx)}</code> (내 진입보다 ${diff===0?'동일 시점':diff+'분 '+(diff>0?'전':'후')}) — 잠재수익 <b class="up">+${best.pct.toFixed(2)}%</b><br><br>`;
+    bestText = `이 구간 최적 ${dirLabel} 타점: ${fmtTime(best.idx)} (내 진입 대비 ${diff===0?'동일':diff+'분 '+(diff>0?'전':'후')}) → 잠재수익 +${best.pct.toFixed(2)}%\n`;
+  }
+
+  const narrativeLines = buildNarrative(direction, entryIdx, m30, mfePct, maePct);
+  const narrativeHtml = narrativeLines.map(l=>`<p style="margin:0 0 10px;">${l}</p>`).join('');
+  const narrativeText = narrativeLines.map(l=>l.replace(/<\/?u>/g,'').replace(/&gt;/g,'>').replace(/&lt;/g,'<')).join('\n');
+
+  resultPanel.style.display='block';
+  const score = computeScore(direction, entryIdx, m30, mfePct, maePct);
+  const gradeColor = score.grade.label==='S' ? 'var(--good)' : score.grade.label==='A' ? '#8FE3B0' : score.grade.label==='B' ? 'var(--amber)' : 'var(--red)';
+  const scoreBarsHtml = score.breakdown.map(b=>{
+    const pct = Math.max(0, Math.min(100, (b.score/b.max)*100));
+    const barColor = pct>=70?'var(--good)':pct>=40?'var(--amber)':'var(--red)';
+    return `<div class="scoreBarRow"><span class="lbl">${b.label}</span><div class="scoreBarTrack"><div class="scoreBarFill" style="width:${pct}%; background:${barColor};"></div></div><span class="num">${b.score}/${b.max}</span></div>`;
+  }).join('');
+  const scoreHtml = `
+    <div class="scoreCard">
+      <div class="scoreCircle" style="color:${gradeColor};">${score.total}<div style="font-size:11px; color:var(--muted); font-weight:600;">${score.grade.label} · ${score.grade.desc}</div></div>
+      <div class="scoreBars">${scoreBarsHtml}</div>
+    </div>
+    <div class="fmt" style="margin:-4px 0 12px;">${score.note} (100점 만점이 아니라 96점을 상한으로 둔 채점입니다 — 최적 타점도 사후 확정 정보라 완전한 정답으로 취급하지 않습니다.)</div>
+  `;
+  const scoreText = `[진입 점수] ${score.total}/100 (${score.grade.label} · ${score.grade.desc})\n` +
+    score.breakdown.map(b=>`  - ${b.label}: ${b.score}/${b.max}`).join('\n') + `\n  ※ ${score.note}\n`;
+
+  resultBody.innerHTML = `
+    <div class="badge ${direction==='pass'?'':(direction==='long'?'real':'live')}" style="margin-bottom:10px;">${dirLabel} · ${fmtTime(entryIdx)}</div>
+    ${scoreHtml}
+    <div class="snapshot">${bestHtml}</div>
+    <div class="resultGrid">
+      <div class="stat"><div class="k">진입가</div><div class="v">${Math.round(entry.close).toLocaleString()}</div></div>
+      <div class="stat"><div class="k">5분 후 손익</div><div class="v ${m5.pct>=0?'up':'down'}">${m5.pct>=0?'+':''}${m5.pct.toFixed(2)}%</div></div>
+      <div class="stat"><div class="k">10분 후 손익</div><div class="v ${m10.pct>=0?'up':'down'}">${m10.pct>=0?'+':''}${m10.pct.toFixed(2)}%</div></div>
+      <div class="stat"><div class="k">20분 후 손익</div><div class="v ${m20.pct>=0?'up':'down'}">${m20.pct>=0?'+':''}${m20.pct.toFixed(2)}%</div></div>
+      <div class="stat"><div class="k">30분 후 손익</div><div class="v ${m30.pct>=0?'up':'down'}">${m30.pct>=0?'+':''}${m30.pct.toFixed(2)}%</div></div>
+      <div class="stat"><div class="k">최대이익(MFE)</div><div class="v up">+${mfePct.toFixed(2)}%</div></div>
+      <div class="stat"><div class="k">최대손실(MAE)</div><div class="v down">${maePct.toFixed(2)}%</div></div>
+    </div>
+    <div class="snapshot" style="font-size:14px; line-height:1.8;">
+      <h2 style="margin:14px 0 8px;">이 구간, 왜 ${dirLabel}(이었어야) 했나</h2>
+      ${narrativeHtml}
+      ${rationale?`<p style="color:var(--muted); font-size:12.5px;">내가 적은 진입 근거: <code>${rationale}</code></p>`:''}
+    </div>
+  `;
+
+  lastSummary = `[리플레이 트레이닝 결과 — 라운드 ${roundNo}]
+${scoreText}데이터: ${dataMode==='real'?'실데이터':'합성(연습용)'} / ${session.label}
+진입시각: ${fmtTime(entryIdx)} / 방향: ${dirLabel} / 진입가: ${Math.round(entry.close).toLocaleString()}
+진입 근거 메모: ${rationale || '(없음)'}
+--- 진입 시점 지표 ---
+VWAP 대비: ${vsVwap==null?'—':(vsVwap>=0?'+':'')+vsVwap.toFixed(2)+'%'}
+EMA 배열: ${align}
+Stochastic RSI %K/%D: ${kK!=null?kK.toFixed(1):'—'} / ${kD!=null?kD.toFixed(1):'—'} (${stochState})
+--- 이후 결과 ---
+5분: ${m5.pct>=0?'+':''}${m5.pct.toFixed(2)}%  10분: ${m10.pct>=0?'+':''}${m10.pct.toFixed(2)}%  30분: ${m30.pct>=0?'+':''}${m30.pct.toFixed(2)}%
+구간 내 최대이익(MFE): +${mfePct.toFixed(2)}%  최대손실(MAE): ${maePct.toFixed(2)}%
+${bestText}--- 상세 분석 ---
+${narrativeText}
+이 판단에 대해 피드백 부탁해!`;
+}
+
+document.getElementById('btnCopy').addEventListener('click', ()=>{
+  const status = document.getElementById('copyStatus');
+  function shown(){ status.style.display='block'; setTimeout(()=>status.style.display='none', 2500); }
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lastSummary).then(shown);
+  else { const ta = document.createElement('textarea'); ta.value = lastSummary; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); shown(); }
+});
+
+/* ---------------- API 통신 및 버튼 이벤트 ---------------- */
+document.getElementById('btnNewRound').addEventListener('click', ()=>{ dataMode='synthetic'; startRound(genSyntheticSession(Math.floor(Math.random()*99999)+1)); });
+document.getElementById('btnNextRound').addEventListener('click', ()=>{ if(dataMode==='synthetic') startRound(genSyntheticSession(Math.floor(Math.random()*99999)+1)); else startRound(session); });
+document.getElementById('btnToggleCsv').addEventListener('click', ()=>{ const box = document.getElementById('csvBox'); box.style.display = box.style.display==='none' ? 'block':'none'; });
+document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
+  const text = document.getElementById('csvInput').value; const candles = parseCsv(text);
+  if(candles.length<40){ alert('파싱된 캔들이 너무 적어요 (최소 40개 이상 필요). 형식을 확인해주세요.'); return; }
+  dataMode='real'; startRound({label:`실데이터 · ${candles.length}개 캔들`, candles}); document.getElementById('csvBox').style.display='none';
+});
+
+// 한투 API 실시간 연동
+document.getElementById('btnLoadReal').addEventListener('click', async () => {
+    const code = prompt("조회할 종목코드를 입력하세요 (기본값: KODEX 인버스)", "114800"); if(!code) return;
+    try {
+        const res = await fetch(`http://localhost:8080/data?code=${code}`); const jsonData = await res.json();
+        if(!jsonData.output2 || jsonData.output2.length === 0) { alert("데이터를 불러오지 못했습니다. 장 운영 시간(9시~15시30분)이 아니거나 종목코드를 확인해 줘."); return; }
+        const rawCandles = jsonData.output2; rawCandles.reverse(); const candles = [];
+        for(let i=0; i<rawCandles.length; i++) {
+            const c = rawCandles[i]; const o = parseFloat(c.stck_oprc); const h = parseFloat(c.stck_hgpr); const l = parseFloat(c.stck_lwpr); const close = parseFloat(c.stck_prpr); const v = parseFloat(c.cntg_vol);
+            candles.push({t: i, open: o, high: h, low: l, close: close, o, h, l, c: close, v});
+        }
+        dataMode = 'real_live'; startRound({label: `한투 실시간 차트 (${code})`, candles});
+    } catch(e) { alert("로컬 서버(8080)와 연결할 수 없어. 까만 창에 자바 서버가 켜져 있는지 확인해 줘!"); }
+});
+
+window.addEventListener('resize', ()=>{ if(session) render(); });
+startRound(genSyntheticSession(7));
+</script>
+</body>
+</html>
