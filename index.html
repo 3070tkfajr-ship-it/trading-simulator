@@ -1253,28 +1253,24 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
-    const priceCanvas = document.getElementById('priceCanvas');
-    const stochCanvas = document.getElementById('stochCanvas');
-    const combined = document.createElement('canvas');
-    const gap = 12;
-    combined.width = priceCanvas.width;
-    combined.height = priceCanvas.height + stochCanvas.height + gap;
-    const ctx = combined.getContext('2d');
-    ctx.fillStyle = '#10161F';
-    ctx.fillRect(0, 0, combined.width, combined.height);
-    const priceCanvas = document.getElementById('priceCanvas');
-    const volCanvas = document.getElementById('volCanvas');
-    const stochCanvas = document.getElementById('stochCanvas');
+    const pCanvas = document.getElementById('priceCanvas');
+    const zCanvas = document.getElementById('zoomCanvas');
+    const vCanvas = document.getElementById('volCanvas');
+    const sCanvas = document.getElementById('stochCanvas');
     const combined = document.createElement('canvas');
     const gap = 10;
-    combined.width = priceCanvas.width;
-    combined.height = priceCanvas.height + volCanvas.height + stochCanvas.height + gap * 2;
+    const h2 = zCanvas ? zCanvas.height : 0;
+    const h3 = vCanvas ? vCanvas.height : 0;
+    combined.width = pCanvas.width;
+    combined.height = pCanvas.height + h2 + h3 + sCanvas.height + gap * 3;
     const ctx = combined.getContext('2d');
     ctx.fillStyle = '#10161F';
     ctx.fillRect(0, 0, combined.width, combined.height);
-    ctx.drawImage(priceCanvas, 0, 0);
-    ctx.drawImage(volCanvas, 0, priceCanvas.height + gap);
-    ctx.drawImage(stochCanvas, 0, priceCanvas.height + volCanvas.height + gap * 2);
+    let y = 0;
+    ctx.drawImage(pCanvas, 0, y); y += pCanvas.height + gap;
+    if (zCanvas) { ctx.drawImage(zCanvas, 0, y); y += zCanvas.height + gap; }
+    if (vCanvas) { ctx.drawImage(vCanvas, 0, y); y += vCanvas.height + gap; }
+    ctx.drawImage(sCanvas, 0, y);
 
     const base64Data = combined.toDataURL('image/png').split(',')[1];
     const response = await fetch(endpoint, {
