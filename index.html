@@ -105,6 +105,7 @@
     <div class="controls">
       <button id="btnStep">▶ 다음 1분 보기</button>
       <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
+      <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
       <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
     </div>
     <div style="margin-top:10px;">
@@ -147,6 +148,22 @@ function vwapSeries(candles){
     cumPV += tp*c.v; cumV += c.v;
     out[i] = cumV>0 ? cumPV/cumV : c.c;
   }
+  return out;
+}
+function atrSeries(candles, period){
+  const n = candles.length; const tr = new Array(n).fill(null);
+  for(let i=0;i<n;i++){
+    const c = candles[i];
+    if(i===0){ tr[i] = c.high-c.low; continue; }
+    const prevClose = candles[i-1].close;
+    tr[i] = Math.max(c.high-c.low, Math.abs(c.high-prevClose), Math.abs(c.low-prevClose));
+  }
+  // Wilder 스타일 평활화 (EMA와 유사한 방식으로 반응성 확보)
+  const out = new Array(n).fill(null);
+  if(n<period) return out;
+  let seed=0; for(let i=0;i<period;i++) seed+=tr[i]; seed/=period; out[period-1]=seed;
+  let prev=seed; const k=1/period;
+  for(let i=period;i<n;i++){ const v = tr[i]*k + prev*(1-k); out[i]=v; prev=v; }
   return out;
 }
 function rsiSeries(closes, period){
@@ -227,6 +244,7 @@ function parseCsv(text){
 let session = null; let indicators = null; let cutoff = 0; let selectedIdx = 0; let maxCutoffReached = 0;
 let lastPriceLayout = null; let bought = false; let direction = null; let entryIdx = -1;
 let roundNo = 0; let dataMode = 'synthetic'; let whatIfMarkerIdx = null;
+let viewAllMode = false; let viewAllPrevCutoff = 0;
 
 const priceCanvas = document.getElementById('priceCanvas'); const stochCanvas = document.getElementById('stochCanvas');
 const tape = document.getElementById('tape'); const srcBadge = document.getElementById('srcBadge');
@@ -235,13 +253,14 @@ const resultBody = document.getElementById('resultBody');
 
 function computeIndicators(candles){
   const closes = candles.map(c=>c.close);
-  return { ema5: ema(closes,5), ema9: ema(closes,9), ema20: ema(closes,20), ema200: ema(closes,200), vwap: vwapSeries(candles), stoch: stochRsiSeries(closes) };
+  return { ema5: ema(closes,5), ema9: ema(closes,9), ema20: ema(closes,20), ema200: ema(closes,200), vwap: vwapSeries(candles), stoch: stochRsiSeries(closes), atr: atrSeries(candles,14) };
 }
 
 function startRound(newSession){
   session = newSession; indicators = computeIndicators(session.candles); roundNo++;
   bought=false; direction=null; entryIdx=-1; resultPanel.style.display='none';
   whatIfMarkerIdx = null; document.getElementById('whatIfBox').style.display='none';
+  viewAllMode = false; document.getElementById('btnViewAll').textContent = '🔭 모든 차트 보기 (09:00~장마감)';
   document.getElementById('rationale').value=''; document.getElementById('rationale').disabled=false;
   
   const N = session.candles.length;
@@ -262,6 +281,7 @@ function startRound(newSession){
   document.getElementById('btnPass').disabled = isLive;
   document.getElementById('btnStep').disabled = isLive;
   document.getElementById('btnRewindReset').disabled = isLive;
+  document.getElementById('btnViewAll').disabled = isLive;
   if(isLive) document.getElementById('rationale').disabled = true;
 
   render();
@@ -290,7 +310,7 @@ function render(){
     <span>VWAP <b>${Math.round(indicators.vwap[revealEnd]).toLocaleString()}</b></span>`;
 
   const remaining = c.length - cutoff;
-  closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction ? 'inline' : 'none';
+  closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction && !viewAllMode ? 'inline' : 'none';
 
   drawPriceChart(visible, revealEnd);
   drawStochChart(revealEnd);
@@ -298,6 +318,8 @@ function render(){
   const selInfo = document.getElementById('selInfo');
   if(dataMode === 'real_live'){
     selInfo.innerHTML = `실시간 연동 중에는 타점 연습이 제한되며, <b>차트 모니터링</b>만 가능합니다.`;
+  } else if(viewAllMode){
+    selInfo.innerHTML = `<b style="color:var(--text)">전체 보기 모드</b> — 09:00부터 장마감까지 당일 차트 전체를 보고 있어요. 타점 연습에는 정답을 미리 보는 셈이라 진입 버튼은 잠겨있습니다. "연습 모드로 돌아가기"를 누르면 원래 보던 시점으로 복귀해요.`;
   } else if(!direction){
     const rewound = cutoff < maxCutoffReached;
     selInfo.innerHTML = `보고 있는 시점: <b style="color:var(--text)">${fmtTime(cutoff)}</b>`
@@ -392,7 +414,7 @@ document.getElementById('btnShort').addEventListener('click', ()=>takePosition('
 document.getElementById('btnPass').addEventListener('click', ()=>takePosition('pass'));
 
 priceCanvas.addEventListener('click', (e)=>{
-  if(!lastPriceLayout || !session || dataMode==='real_live') return;
+  if(!lastPriceLayout || !session || dataMode==='real_live' || viewAllMode) return;
   const rect = priceCanvas.getBoundingClientRect(); const xCss = e.clientX - rect.left;
   const {padL, plotW, n} = lastPriceLayout; const idxFloat = (xCss-padL)/plotW*(n-1);
   let idx = Math.round(idxFloat);
@@ -409,6 +431,34 @@ priceCanvas.addEventListener('click', (e)=>{
 document.getElementById('btnRewindReset').addEventListener('click', ()=>{
   if(direction || dataMode==='real_live') return;
   cutoff = maxCutoffReached; selectedIdx = cutoff; render();
+});
+
+document.getElementById('btnViewAll').addEventListener('click', ()=>{
+  if(direction || dataMode==='real_live') return;
+  const btn = document.getElementById('btnViewAll');
+  if(!viewAllMode){
+    // 전체 보기 진입: 09:00(캔들 0)부터 장마감(마지막 캔들)까지 전부 표시. 타점 연습에 정답을 미리 보여주는 셈이라 진입/스텝 버튼은 잠금.
+    viewAllPrevCutoff = cutoff;
+    viewAllMode = true;
+    cutoff = session.candles.length-1; selectedIdx = cutoff;
+    btn.textContent = '↩ 연습 모드로 돌아가기';
+    document.getElementById('btnLong').disabled = true;
+    document.getElementById('btnShort').disabled = true;
+    document.getElementById('btnPass').disabled = true;
+    document.getElementById('btnStep').disabled = true;
+    document.getElementById('btnRewindReset').disabled = true;
+  } else {
+    // 연습 모드 복귀: 전체 보기 이전 시점으로 원상복구 (미래를 봤으니 maxCutoffReached는 그대로 유지되어 다시 앞으로 나갈 수 있음)
+    viewAllMode = false;
+    cutoff = viewAllPrevCutoff; selectedIdx = cutoff;
+    btn.textContent = '🔭 모든 차트 보기 (09:00~장마감)';
+    document.getElementById('btnLong').disabled = false;
+    document.getElementById('btnShort').disabled = false;
+    document.getElementById('btnPass').disabled = false;
+    document.getElementById('btnStep').disabled = false;
+    document.getElementById('btnRewindReset').disabled = false;
+  }
+  render();
 });
 
 function computeOutcomeStats(dir, idx){
@@ -493,12 +543,24 @@ function analyzeContext(entryIdx){
   let stochDelta=null;
   if(stochK[entryIdx]!=null && entryIdx-4>=0 && stochK[entryIdx-4]!=null) stochDelta = stochK[entryIdx]-stochK[entryIdx-4];
 
+  // StochRSI %K/%D 골든/데드 크로스 최근성 (최근 8개 캔들)
+  const stochD = indicators.stoch.D;
+  let stochCrossAgo=null, stochCrossType=null;
+  for(let k=0;k<8;k++){
+    const i = entryIdx-k;
+    if(i-1<0 || stochK[i]==null || stochD[i]==null || stochK[i-1]==null || stochD[i-1]==null) continue;
+    const prevDiff = stochK[i-1]-stochD[i-1], curDiff = stochK[i]-stochD[i];
+    if(prevDiff!==0 && curDiff!==0 && Math.sign(prevDiff)!==Math.sign(curDiff)){
+      stochCrossAgo = k; stochCrossType = curDiff>0 ? 'golden' : 'dead'; break;
+    }
+  }
+
   // 거래량 배수 (직전 20개 평균 대비)
   let volRatio=null; let sumV=0,cnt=0;
   for(let i=Math.max(0,entryIdx-20); i<entryIdx; i++){ sumV+=c[i].v; cnt++; }
   if(cnt>0) volRatio = c[entryIdx].v/(sumV/cnt);
 
-  return {vwapPersist, crossAgo, crossType, stochDelta, volRatio};
+  return {vwapPersist, crossAgo, crossType, stochDelta, stochCrossAgo, stochCrossType, volRatio};
 }
 
 function buildNarrative(direction, entryIdx, m30, mfePct, maePct){
@@ -541,6 +603,7 @@ function buildNarrative(direction, entryIdx, m30, mfePct, maePct){
   else if(kK>80) stochDesc = `Stochastic RSI는 <u>과매수권(${kK.toFixed(1)})</u>에 있었습니다 — 이 구간은 대개 매수세가 이미 많이 소진된 자리라, 신규 롱을 여는 것보다는 되돌림 여부를 지켜보거나 숏 전환을 고려하는 쪽이 정석입니다.`;
   else stochDesc = `Stochastic RSI는 <u>중립 구간(${kK.toFixed(1)})</u>에 있어서, 이 지표만으로는 뚜렷한 방향 근거가 되지 못하는 자리였습니다.`;
   if(ctx.stochDelta!=null) stochDesc += ` (직전 4분 대비 <u>${ctx.stochDelta>=0?'+':''}${ctx.stochDelta.toFixed(1)}p</u>로 ${ctx.stochDelta>=0?'상승':'하락'} 중)`;
+  if(ctx.stochCrossAgo!=null) stochDesc += ` 또한 <u>${ctx.stochCrossAgo===0?'바로 이 캔들에서':ctx.stochCrossAgo+'분 전'} %K/%D ${ctx.stochCrossType==='golden'?'골든크로스':'데드크로스'}</u>가 나온 상태였습니다.`;
   lines.push(stochDesc);
 
   // 4. 거래량
@@ -550,10 +613,15 @@ function buildNarrative(direction, entryIdx, m30, mfePct, maePct){
     else lines.push(`거래량은 평균과 비슷한 수준(<u>${ctx.volRatio.toFixed(1)}배</u>)이라, 특별히 힘이 실리거나 빠진 신호는 없었습니다.`);
   }
 
-  // 5. 종합 제안 vs 실제 선택
+  // 5. 종합 제안 vs 실제 선택 (EMA 4개 전부 정렬을 요구하던 예전 방식 대신, 3단계 중 2단계 이상 맞으면 '정배열 경향'으로 인정)
+  let longSteps=0, shortSteps=0;
+  if(e5!=null&&e9!=null&&e20!=null&&e200!=null){
+    if(e5>e9) longSteps++; if(e9>e20) longSteps++; if(e20>e200) longSteps++;
+    if(e5<e9) shortSteps++; if(e9<e20) shortSteps++; if(e20<e200) shortSteps++;
+  }
   let suggestion='관망';
-  if(align==='정배열' && (vsVwapPct==null || vsVwapPct>=-0.1) && !(kK>80)) suggestion='롱';
-  else if(align==='역배열' && (vsVwapPct==null || vsVwapPct<=0.1) && !(kK<20)) suggestion='숏';
+  if(longSteps>=2 && (vsVwapPct==null || vsVwapPct>=-0.1) && !(kK>80)) suggestion='롱';
+  else if(shortSteps>=2 && (vsVwapPct==null || vsVwapPct<=0.1) && !(kK<20)) suggestion='숏';
   const dirLabel = direction==='long'?'롱':direction==='short'?'숏':'관망';
   lines.push(`위 조건들을 종합하면 교과서적으로는 <u>${suggestion}</u> 쪽에 조금 더 무게가 실리는 자리였습니다. 사용자님은 <u>${dirLabel}</u>을 선택하셨는데, 이는 그 판단과 <u>${suggestion===dirLabel?'같은 방향':'다른 방향'}</u>이었습니다.`);
 
@@ -604,6 +672,7 @@ function computeScore(direction, entryIdx, m30, mfePct, maePct){
   }
 
   const dirLabel = direction==='long'?'롱':'숏';
+  const ctx = analyzeContext(entryIdx);
 
   // 1. 결과 활용도 (30점): 실제 30분 손익 / 이론상 최적 타점 수익
   const best = findBestEntry(direction, c, entryIdx);
@@ -611,22 +680,43 @@ function computeScore(direction, entryIdx, m30, mfePct, maePct){
   const resultRatio = Math.max(0, Math.min(1, m30.pct / bestPct));
   const scoreA = Math.round(resultRatio*30);
 
-  // 2. 리스크 관리 (25점): MAE가 작을수록 고득점
-  const riskRatio = Math.max(0, Math.min(1, 1 - Math.abs(maePct)/1.2));
+  // 2. 리스크 관리 (25점): MAE를 고정값이 아니라 이 구간의 ATR(변동성) 대비 상대값으로 정규화
+  //    → 변동성 큰 종목(레버리지/인버스 등)과 저변동 대형주를 같은 잣대로 평가하지 않기 위함
+  const atrNow = indicators.atr[entryIdx];
+  const atrPct = (atrNow!=null && price) ? (atrNow/price*100) : 0.6; // ATR 계산 불가 구간은 보수적 기본값(0.6%) 사용
+  const riskBudget = Math.max(atrPct*1.5, 0.4); // 평소 변동폭의 1.5배까지는 정상 노이즈로 인정
+  const riskRatio = Math.max(0, Math.min(1, 1 - Math.abs(maePct)/riskBudget));
   const scoreB = Math.round(riskRatio*25);
 
-  // 3. 근거 정합성 (25점): VWAP/EMA/StochRSI 3개 중 방향과 일치하는 개수
-  let agree=0;
-  if(direction==='long'){
-    if(vsVwapPct==null || vsVwapPct>=-0.1) agree++;
-    if(align==='정배열') agree++;
-    if(!(kK>80)) agree++;
-  } else {
-    if(vsVwapPct==null || vsVwapPct<=0.1) agree++;
-    if(align==='역배열') agree++;
-    if(!(kK<20)) agree++;
+  // 3. 근거 정합성 (25점): 이진 판정 대신 단계적 부분점수
+  //    3-1) VWAP 위치 (8점, 방향과 일치하면 만점)
+  let scoreVwap = 0;
+  if(direction==='long'){ if(vsVwapPct==null || vsVwapPct>=-0.1) scoreVwap = 8; }
+  else { if(vsVwapPct==null || vsVwapPct<=0.1) scoreVwap = 8; }
+
+  //    3-2) EMA 단계적 정렬 (10점) — 5>9, 9>20, 20>200 중 방향과 맞는 단계 수만큼 부분점수
+  //         (예전엔 4개 EMA가 '전부' 맞아야만 점수를 줘서, 초기 추세전환 시 조기 진입을 과도하게 감점했음)
+  let alignSteps = 0;
+  if(e5!=null&&e9!=null&&e20!=null&&e200!=null){
+    if(direction==='long'){ if(e5>e9) alignSteps++; if(e9>e20) alignSteps++; if(e20>e200) alignSteps++; }
+    else { if(e5<e9) alignSteps++; if(e9<e20) alignSteps++; if(e20<e200) alignSteps++; }
   }
-  const scoreC = Math.round((agree/3)*25);
+  const scoreEma = Math.round((alignSteps/3)*10);
+
+  //    3-3) StochRSI 모멘텀 확인 (7점) — 극단 회피(3) + 방향에 맞는 추세(2) + 최근 골든/데드 크로스(2)
+  //         (예전엔 '과매수/과매도만 아니면 통과'라 거의 항상 만점 처리되던 변별력 낮은 조건이었음)
+  let scoreStoch = 0;
+  if(kK!=null){
+    const badExtreme = direction==='long' ? kK>80 : kK<20;
+    if(!badExtreme) scoreStoch += 3;
+    const favorableDelta = direction==='long' ? (ctx.stochDelta!=null && ctx.stochDelta>0) : (ctx.stochDelta!=null && ctx.stochDelta<0);
+    if(favorableDelta) scoreStoch += 2;
+    const favorableCross = direction==='long' ? ctx.stochCrossType==='golden' : ctx.stochCrossType==='dead';
+    if(favorableCross) scoreStoch += 2;
+  }
+  scoreStoch = Math.min(7, scoreStoch);
+
+  const scoreC = scoreVwap + scoreEma + scoreStoch;
 
   // 4. 타이밍 정밀도 (20점): 최적 타점과의 시간 차이
   const diffMin = Math.abs(entryIdx-best.idx);
@@ -640,13 +730,15 @@ function computeScore(direction, entryIdx, m30, mfePct, maePct){
     total, grade: gradeOf(total),
     breakdown: [
       {label:'결과 활용도', score:scoreA, max:30},
-      {label:'리스크 관리', score:scoreB, max:25},
-      {label:'근거 정합성', score:scoreC, max:25},
+      {label:'리스크 관리(ATR대비)', score:scoreB, max:25},
+      {label:'VWAP 위치', score:scoreVwap, max:8},
+      {label:'EMA 단계정렬', score:scoreEma, max:10},
+      {label:'StochRSI 모멘텀', score:scoreStoch, max:7},
       {label:'타이밍 정밀도', score:scoreD, max:20}
     ],
     note: diffMin===0
       ? `참고로 이 순간이 이 구간의 이론상 최적 ${dirLabel} 타점과 정확히 일치했습니다. 다만 그 타점도 사후에 확정된 정보라, 실전에서 그 확신을 갖고 들어가긴 어려웠을 거라 100점을 드리진 않습니다.`
-      : `이론상 최적 ${dirLabel} 타점(${fmtTime(best.idx)})과는 ${diffMin}분 차이가 있었습니다.`
+      : `이론상 최적 ${dirLabel} 타점(${fmtTime(best.idx)})과는 ${diffMin}분 차이가 있었습니다. (리스크 점수는 이 구간 ATR ${atrPct.toFixed(2)}% 기준으로 정규화했습니다)`
   };
 }
 function gradeOf(score){
@@ -761,7 +853,7 @@ document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
 document.getElementById('btnLoadReal').addEventListener('click', async () => {
     const code = prompt("조회할 종목코드를 입력하세요 (기본값: KODEX 인버스)", "114800"); if(!code) return;
     try {
-        const res = await fetch(`http://localhost:8080/data?code=${code}`); const jsonData = await res.json();
+        const res = await fetch(`https://kis-proxy-server-di40.onrender.com/data?code=${code}`); const jsonData = await res.json();
         if(!jsonData.output2 || jsonData.output2.length === 0) { alert("데이터를 불러오지 못했습니다. 장 운영 시간(9시~15시30분)이 아니거나 종목코드를 확인해 줘."); return; }
         const rawCandles = jsonData.output2; rawCandles.reverse(); const candles = [];
         for(let i=0; i<rawCandles.length; i++) {
@@ -769,7 +861,7 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
             candles.push({t: i, open: o, high: h, low: l, close: close, o, h, l, c: close, v});
         }
         dataMode = 'real_live'; startRound({label: `한투 실시간 차트 (${code})`, candles});
-    } catch(e) { alert("로컬 서버(8080)와 연결할 수 없어. 까만 창에 자바 서버가 켜져 있는지 확인해 줘!"); }
+    } catch(e) { alert("서버(kis-proxy-server)와 연결할 수 없어. Render 대시보드에서 서비스가 Live 상태인지, 무료 플랜이라 슬립 중이면 첫 요청은 30~60초 걸릴 수 있으니 잠시 후 다시 시도해줘!"); }
 });
 
 window.addEventListener('resize', ()=>{ if(session) render(); });
