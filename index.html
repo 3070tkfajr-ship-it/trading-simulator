@@ -133,8 +133,6 @@
     <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
     <div id="whatIfBox" style="display:none; margin-top:10px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>
 
-     <h2 style="margin:16px 0 8px;">거래량 (Volume)</h2>
-    <canvas id="volCanvas" height="80"></canvas>
     <h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
     <canvas id="stochCanvas" height="120"></canvas>
 
@@ -347,7 +345,6 @@ function render(){
   closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction && !viewAllMode ? 'inline' : 'none';
 
   drawPriceChart(visible, revealEnd);
-  drawVolChart(revealEnd);
   drawStochChart(revealEnd);
 
   const selInfo = document.getElementById('selInfo');
@@ -415,59 +412,6 @@ function drawPriceChart(visible, upto){
   }
 }
 
-  function drawVolChart(upto){
-  const volCanvas = document.getElementById('volCanvas');
-  if(!volCanvas || !session) return;
-  const ctx = volCanvas.getContext('2d');
-  const W = volCanvas.clientWidth || 1000;
-  const H = 80;
-  volCanvas.width = W * 2;
-  volCanvas.height = H * 2;
-  ctx.scale(2, 2);
-  ctx.clearRect(0, 0, W, H);
-
-  const padL = 54, padR = 10, padT = 6, padB = 6;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = upto + 1;
-  const candles = session.candles.slice(0, n);
-
-  let maxV = 1;
-  for(const c of candles){ if(c.v != null && c.v > maxV) maxV = c.v; }
-
-  // 최근 20개 평균 (상대거래량 기준선)
-  let avgV = 0, cnt = 0;
-  const start = Math.max(0, n - 20);
-  for(let i = start; i < n; i++){ if(candles[i].v != null){ avgV += candles[i].v; cnt++; } }
-  avgV = cnt > 0 ? avgV / cnt : 0;
-
-  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
-  const yAt = v => padT + (1 - v / maxV) * plotH;
-  const barW = Math.max(1, plotW / n * 0.6);
-
-  for(let i = 0; i < n; i++){
-    const c = candles[i];
-    if(c.v == null) continue;
-    const x = xAt(i);
-    const up = c.close >= c.open;
-    const isHigh = avgV > 0 && c.v >= avgV * 1.5;
-    ctx.fillStyle = isHigh ? (up ? '#3ECF8E' : '#E5484D') : (up ? 'rgba(62,207,142,0.45)' : 'rgba(229,72,77,0.45)');
-    const top = yAt(c.v);
-    ctx.fillRect(x - barW / 2, top, barW, padT + plotH - top);
-  }
-
-  // 평균선
-  if(avgV > 0){
-    ctx.strokeStyle = 'rgba(245,166,35,0.7)';
-    ctx.setLineDash([4, 3]);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    const y = yAt(avgV);
-    ctx.moveTo(padL, y);
-    ctx.lineTo(W - padR, y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-}
 function drawStochChart(upto){
   const ctx = stochCanvas.getContext('2d'); const W = stochCanvas.clientWidth || 1000; const H = 120;
   stochCanvas.width=W*2; stochCanvas.height=H*2; ctx.scale(2,2); ctx.clearRect(0,0,W,H);
@@ -1173,20 +1117,18 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   aiResultBox.innerHTML = '<span style="color:var(--muted);">현재 차트 캡처 → ' + modelName + ' 분석 중...</span>';
   document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-   try {
+  try {
     const priceCanvas = document.getElementById('priceCanvas');
-    const volCanvas = document.getElementById('volCanvas');
     const stochCanvas = document.getElementById('stochCanvas');
     const combined = document.createElement('canvas');
-    const gap = 10;
+    const gap = 12;
     combined.width = priceCanvas.width;
-    combined.height = priceCanvas.height + volCanvas.height + stochCanvas.height + gap * 2;
+    combined.height = priceCanvas.height + stochCanvas.height + gap;
     const ctx = combined.getContext('2d');
     ctx.fillStyle = '#10161F';
     ctx.fillRect(0, 0, combined.width, combined.height);
     ctx.drawImage(priceCanvas, 0, 0);
-    ctx.drawImage(volCanvas, 0, priceCanvas.height + gap);
-    ctx.drawImage(stochCanvas, 0, priceCanvas.height + volCanvas.height + gap * 2);
+    ctx.drawImage(stochCanvas, 0, priceCanvas.height + gap);
 
     const base64Data = combined.toDataURL('image/png').split(',')[1];
     const response = await fetch(endpoint, {
