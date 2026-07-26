@@ -847,10 +847,9 @@ document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
   dataMode='real'; startRound({label:`실데이터 · ${candles.length}개 캔들`, candles}); document.getElementById('csvBox').style.display='none';
 });
 
-// 한투 API 실시간 연동 (일봉/분봉 선택 지원)
+// 한투 API 실시간 연동 (일봉/분봉 500개 지원 + 실시간 분석 버튼 활성화)
 document.getElementById('btnLoadReal').addEventListener('click', async () => {
-    // 💡 콤마(,) 뒤에 D를 붙이면 일봉을 호출하도록 꿀팁 추가
-    const input = prompt("조회할 종목코드 (기본 1분봉. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉) / 114800,D (일봉)", "114800"); 
+    const input = prompt("조회할 종목코드 (기본 1분봉 500개. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉 500개) / 114800,D (일봉)", "114800"); 
     if(!input) return;
     
     const parts = input.split(",");
@@ -874,17 +873,19 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
             const o = parseFloat(c.stck_oprc); 
             const h = parseFloat(c.stck_hgpr); 
             const l = parseFloat(c.stck_lwpr); 
-            // 한투 API는 분봉엔 stck_prpr(현재가), 일봉엔 stck_clpr(종가)로 이름을 다르게 줌
             const close = parseFloat(c.stck_prpr || c.stck_clpr); 
-            // 거래량도 분봉은 cntg_vol, 일봉은 acml_vol
             const v = parseFloat(c.cntg_vol || c.acml_vol);
             
             candles.push({t: i, open: o, high: h, low: l, close: close, o, h, l, c: close, v});
         }
         
         dataMode = 'real_live'; 
-        const labelText = tf === "D" ? `한투 일봉 차트 (${code})` : `한투 1분봉 차트 (${code})`;
+        const labelText = tf === "D" ? `한투 일봉 차트 (${code})` : `한투 1분봉 500개 차트 (${code})`;
         startRound({label: labelText, candles});
+
+        // 🚀 핵심 포인트: 실시간 모니터링 화면이 떴을 때도 AI 분석 버튼을 바로 쓸 수 있게 강제 활성화!
+        document.getElementById('aiAnalysisPanel').style.display = 'block';
+        
     } catch(e) { 
         alert("서버와 연결할 수 없어. Render 서버가 깨어나는 중(최대 1분)일 수 있으니 잠시 후 다시 시도해줘!"); 
     }
