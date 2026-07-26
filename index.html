@@ -1280,11 +1280,30 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
-  
+    const pCanvas = document.getElementById('priceCanvas');
+    const zCanvas = document.getElementById('zoomCanvas');
+    const vCanvas = document.getElementById('volCanvas');
+    const sCanvas = document.getElementById('stochCanvas');
+    const combined = document.createElement('canvas');
+    const gap = 10;
+    const hZoom = zCanvas ? zCanvas.height : 0;
+    const hVol = vCanvas ? vCanvas.height : 0;
+    combined.width = pCanvas.width;
+    combined.height = pCanvas.height + hZoom + hVol + sCanvas.height + gap * 3;
+    const ctx = combined.getContext('2d');
+    ctx.fillStyle = '#10161F';
+    ctx.fillRect(0, 0, combined.width, combined.height);
     let y = 0;
-    ctx.drawImage(pCanvas, 0, y); y += pCanvas.height + gap;
-    if (zCanvas) { ctx.drawImage(zCanvas, 0, y); y += zCanvas.height + gap; }
-    if (vCanvas) { ctx.drawImage(vCanvas, 0, y); y += vCanvas.height + gap; }
+    ctx.drawImage(pCanvas, 0, y);
+    y += pCanvas.height + gap;
+    if (zCanvas) {
+      ctx.drawImage(zCanvas, 0, y);
+      y += zCanvas.height + gap;
+    }
+    if (vCanvas) {
+      ctx.drawImage(vCanvas, 0, y);
+      y += vCanvas.height + gap;
+    }
     ctx.drawImage(sCanvas, 0, y);
 
     const base64Data = combined.toDataURL('image/png').split(',')[1];
