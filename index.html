@@ -14,7 +14,11 @@
     --sans: -apple-system,'Apple SD Gothic Neo','Pretendard',BlinkMacSystemFont,'Segoe UI',sans-serif;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; padding-bottom:52px; }
+  #watchlistBarWrap{ position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--panel); border-top:1px solid var(--line); padding:8px 10px; box-sizing:border-box; }
+  #watchlistBar{ display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .watch-btn{ flex:0 0 auto; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; }
+  .watch-btn:active{ background:var(--cyan); color:#04342C; }
   .wrap{max-width:1040px;margin:0 auto;padding:18px 16px 60px;}
   .topbar{ display:flex; align-items:baseline; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
   .topbar h1{font-size:17px; font-weight:700; margin:0; letter-spacing:-0.2px;}
@@ -61,6 +65,9 @@
 </style>
 </head>
 <body>
+  <div id="watchlistBarWrap">
+    <div id="watchlistBar"></div>
+  </div>
 <div class="wrap">
 
   <div class="topbar">
@@ -888,14 +895,8 @@ document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
 });
 
 // 한투 API 실시간 연동 (일봉/분봉 500개 지원 + 실시간 분석 버튼 활성화)
-document.getElementById('btnLoadReal').addEventListener('click', async () => {
-    const input = prompt("조회할 종목코드 (기본 1분봉 500개. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉 500개) / 114800,D (일봉)", "114800"); 
-    if(!input) return;
-    
-    const parts = input.split(",");
-    const code = parts[0].trim();
-    const tf = parts.length > 1 ? parts[1].trim().toUpperCase() : "1m";
-
+async function loadDomestic(code, tf) {
+    tf = tf || "1m";
     try {
         const res = await fetch(`https://kis-proxy-server-di40.onrender.com/data?code=${code}&tf=${tf}`); 
         const jsonData = await res.json();
@@ -924,19 +925,23 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
         startRound({label: labelText, candles});
 
         // 🚀 핵심 포인트: 실시간 모니터링 화면이 떴을 때도 AI 분석 버튼을 바로 쓸 수 있게 강제 활성화!
-       document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
+        document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
         document.getElementById('aiAnalysisPanel').style.display = 'block';
         
     } catch(e) { 
         alert("서버와 연결할 수 없어. Render 서버가 깨어나는 중(최대 1분)일 수 있으니 잠시 후 다시 시도해줘!"); 
     }
+}
+
+document.getElementById('btnLoadReal').addEventListener('click', () => {
+    const input = prompt("조회할 종목코드 (기본 1분봉 500개. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉 500개) / 114800,D (일봉)", "114800"); 
+    if(!input) return;
+    const parts = input.split(",");
+    loadDomestic(parts[0].trim(), parts.length > 1 ? parts[1].trim().toUpperCase() : "1m");
 });
 
 // 🇺🇸 Twelve Data 미국 주식 1분봉 연동 (무료: 하루 800회, 분당 8회)
-document.getElementById('btnLoadUs').addEventListener('click', async () => {
-    const symbol = prompt("조회할 미국 주식 티커를 입력하세요 (예: AAPL, TSLA, NVDA)", "AAPL");
-    if(!symbol) return;
-
+async function loadUs(symbol) {
     try {
         const res = await fetch(`https://kis-proxy-server-di40.onrender.com/us-data?symbol=${encodeURIComponent(symbol)}`);
         const jsonData = await res.json();
@@ -966,8 +971,36 @@ document.getElementById('btnLoadUs').addEventListener('click', async () => {
     } catch(e) {
         alert("서버(kis-proxy-server)와 연결할 수 없어. Render가 슬립 상태면 첫 요청은 30~60초 걸릴 수 있으니 잠시 후 다시 시도해줘!");
     }
+}
+
+document.getElementById('btnLoadUs').addEventListener('click', () => {
+    const symbol = prompt("조회할 미국 주식 티커를 입력하세요 (예: AAPL, TSLA, NVDA)", "AAPL");
+    if(!symbol) return;
+    loadUs(symbol);
 });
-/* ---------------- 🚀 AI 스크린샷 분석 로직 ---------------- */
+
+/* ---------------- ⭐ 관심종목 바로가기 ---------------- */
+const WATCHLIST = [
+  {label:'삼성전자', code:'005930', market:'kr'},
+  {label:'SK하이닉스', code:'000660', market:'kr'},
+  {label:'KODEX 200', code:'069500', market:'kr'},
+  {label:'KODEX 인버스', code:'114800', market:'kr'},
+  {label:'삼성증권', code:'016360', market:'kr'},
+  {label:'SOXL', code:'SOXL', market:'us'},
+  {label:'QQQ', code:'QQQ', market:'us'},
+  {label:'VOO', code:'VOO', market:'us'}
+];
+const watchlistBar = document.getElementById('watchlistBar');
+WATCHLIST.forEach(item => {
+  const btn = document.createElement('button');
+  btn.className = 'watch-btn';
+  btn.textContent = item.label;
+  btn.addEventListener('click', () => {
+    if(item.market === 'kr') loadDomestic(item.code, '1m');
+    else loadUs(item.code);
+  });
+  watchlistBar.appendChild(btn);
+});
 const imageInput = document.getElementById('chartImageInput');
 const chartPreview = document.getElementById('chartPreview');
 const previewContainer = document.getElementById('imagePreviewContainer');
