@@ -130,6 +130,7 @@
       <button id="btnStep">▶ 다음 1분 보기</button>
       <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
       <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
+      <button id="btnAnalyzeCurrent" class="live-btn" style="display:none;">🤖 현재 차트 AI 분석</button>
       <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
     </div>
     <div style="margin-top:10px;">
@@ -884,6 +885,7 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
         startRound({label: labelText, candles});
 
         // 🚀 핵심 포인트: 실시간 모니터링 화면이 떴을 때도 AI 분석 버튼을 바로 쓸 수 있게 강제 활성화!
+       document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
         document.getElementById('aiAnalysisPanel').style.display = 'block';
         
     } catch(e) { 
@@ -953,6 +955,63 @@ btnAnalyze.addEventListener('click', async function() {
   } finally {
     btnAnalyze.textContent = '분석 요청하기';
     btnAnalyze.disabled = false;
+  }
+});
+  /* ---------------- 현재 차트 원클릭 분석 ---------------- */
+document.getElementById('btnAnalyzeCurrent').addEventListener('click', async function() {
+  const btn = this;
+  const originalText = btn.textContent;
+  
+  btn.textContent = '분석 중... ⏳';
+  btn.disabled = true;
+  
+  const aiResultBox = document.getElementById('aiResultBox');
+  aiResultBox.style.display = 'block';
+  aiResultBox.innerHTML = '<span style="color:var(--muted);">현재 차트를 캡처해서 AI 분석 중입니다... (최대 30초)</span>';
+  
+  document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const priceCanvas = document.getElementById('priceCanvas');
+    const stochCanvas = document.getElementById('stochCanvas');
+    
+    const combined = document.createElement('canvas');
+    const gap = 12;
+    combined.width = priceCanvas.width;
+    combined.height = priceCanvas.height + stochCanvas.height + gap;
+    
+    const ctx = combined.getContext('2d');
+    ctx.fillStyle = '#10161F';
+    ctx.fillRect(0, 0, combined.width, combined.height);
+    
+    ctx.drawImage(priceCanvas, 0, 0);
+    ctx.drawImage(stochCanvas, 0, priceCanvas.height + gap);
+    
+    const dataUrl = combined.toDataURL('image/png');
+    const base64Data = dataUrl.split(',')[1];
+
+    const response = await fetch('https://kis-proxy-server-di40.onrender.com/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64Data })
+    });
+
+    const data = await response.json();
+    
+    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+      let aiText = data.candidates[0].content.parts[0].text;
+      aiText = aiText.replace(/\n/g, '<br>');
+      aiResultBox.innerHTML = aiText;
+    } else {
+      aiResultBox.innerHTML = '<span style="color:var(--amber);">AI 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.</span>';
+    }
+
+  } catch (error) {
+    console.error(error);
+    aiResultBox.innerHTML = '<span style="color:var(--red);">분석 요청 실패. 서버 상태를 확인해주세요.</span>';
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
   }
 });
 </script>
