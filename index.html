@@ -847,24 +847,48 @@ document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
   dataMode='real'; startRound({label:`실데이터 · ${candles.length}개 캔들`, candles}); document.getElementById('csvBox').style.display='none';
 });
 
-// 한투 API 실시간 연동
+// 한투 API 실시간 연동 (일봉/분봉 선택 지원)
 document.getElementById('btnLoadReal').addEventListener('click', async () => {
-    const code = prompt("조회할 종목코드를 입력하세요 (기본값: KODEX 인버스)", "114800"); if(!code) return;
+    // 💡 콤마(,) 뒤에 D를 붙이면 일봉을 호출하도록 꿀팁 추가
+    const input = prompt("조회할 종목코드 (기본 1분봉. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉) / 114800,D (일봉)", "114800"); 
+    if(!input) return;
+    
+    const parts = input.split(",");
+    const code = parts[0].trim();
+    const tf = parts.length > 1 ? parts[1].trim().toUpperCase() : "1m";
+
     try {
-        const res = await fetch(`https://kis-proxy-server-di40.onrender.com/data?code=${code}`); const jsonData = await res.json();
-        if(!jsonData.output2 || jsonData.output2.length === 0) { alert("데이터를 불러오지 못했습니다. 장 운영 시간(9시~15시30분)이 아니거나 종목코드를 확인해 줘."); return; }
-        const rawCandles = jsonData.output2; rawCandles.reverse(); const candles = [];
+        const res = await fetch(`https://kis-proxy-server-di40.onrender.com/data?code=${code}&tf=${tf}`); 
+        const jsonData = await res.json();
+        
+        if(!jsonData.output2 || jsonData.output2.length === 0) { 
+            alert("데이터를 불러오지 못했습니다. 장 운영 시간이 아니거나 종목코드를 확인해 줘."); return; 
+        }
+        
+        const rawCandles = jsonData.output2; 
+        rawCandles.reverse(); // 과거 데이터부터 정방향 정렬
+        
+        const candles = [];
         for(let i=0; i<rawCandles.length; i++) {
-            const c = rawCandles[i]; const o = parseFloat(c.stck_oprc); const h = parseFloat(c.stck_hgpr); const l = parseFloat(c.stck_lwpr); const close = parseFloat(c.stck_prpr); const v = parseFloat(c.cntg_vol);
+            const c = rawCandles[i]; 
+            const o = parseFloat(c.stck_oprc); 
+            const h = parseFloat(c.stck_hgpr); 
+            const l = parseFloat(c.stck_lwpr); 
+            // 한투 API는 분봉엔 stck_prpr(현재가), 일봉엔 stck_clpr(종가)로 이름을 다르게 줌
+            const close = parseFloat(c.stck_prpr || c.stck_clpr); 
+            // 거래량도 분봉은 cntg_vol, 일봉은 acml_vol
+            const v = parseFloat(c.cntg_vol || c.acml_vol);
+            
             candles.push({t: i, open: o, high: h, low: l, close: close, o, h, l, c: close, v});
         }
-        dataMode = 'real_live'; startRound({label: `한투 실시간 차트 (${code})`, candles});
-    } catch(e) { alert("서버(kis-proxy-server)와 연결할 수 없어. Render 대시보드에서 서비스가 Live 상태인지 확인해주세요."); }
+        
+        dataMode = 'real_live'; 
+        const labelText = tf === "D" ? `한투 일봉 차트 (${code})` : `한투 1분봉 차트 (${code})`;
+        startRound({label: labelText, candles});
+    } catch(e) { 
+        alert("서버와 연결할 수 없어. Render 서버가 깨어나는 중(최대 1분)일 수 있으니 잠시 후 다시 시도해줘!"); 
+    }
 });
-
-window.addEventListener('resize', ()=>{ if(session) render(); });
-startRound(genSyntheticSession(7));
-
 /* ---------------- 🚀 진짜 AI 스크린샷 분석 로직 ---------------- */
 const imageInput = document.getElementById('chartImageInput');
 const chartPreview = document.getElementById('chartPreview');
