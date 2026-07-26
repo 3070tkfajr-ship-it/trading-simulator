@@ -75,7 +75,7 @@
     <div class="srcbar">
       <span id="srcBadge" class="badge live">● 합성(연습용) 데이터</span>
       <button id="btnLoadReal" class="live-btn">📡 실시간 모니터링 (한투 API)</button>
-      <button id="btnLoadUs" class="live-btn">🇺🇸 미국 주식 불러오기 (Alpha Vantage)</button>
+      <button id="btnLoadUs" class="live-btn">🇺🇸 미국 주식 불러오기 (Twelve Data)</button>
       <button id="btnToggleCsv" class="ghost">📁 HTS 과거 데이터 복기 ▾</button>
       <button id="btnNewRound" class="primary">🎲 과거 합성 차트 연습</button>
     </div>
@@ -932,7 +932,7 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
     }
 });
 
-// 🇺🇸 Alpha Vantage 미국 주식 1분봉 연동 (무료 키는 하루 25회 제한이라 자주 누르면 금방 막힘)
+// 🇺🇸 Twelve Data 미국 주식 1분봉 연동 (무료: 하루 800회, 분당 8회)
 document.getElementById('btnLoadUs').addEventListener('click', async () => {
     const symbol = prompt("조회할 미국 주식 티커를 입력하세요 (예: AAPL, TSLA, NVDA)", "AAPL");
     if(!symbol) return;
@@ -941,25 +941,23 @@ document.getElementById('btnLoadUs').addEventListener('click', async () => {
         const res = await fetch(`https://kis-proxy-server-di40.onrender.com/us-data?symbol=${encodeURIComponent(symbol)}`);
         const jsonData = await res.json();
 
-        if(jsonData['Note'] || jsonData['Information']){
-            alert("Alpha Vantage 요청 한도(무료: 하루 25회)를 넘었거나 키 설정에 문제가 있어. 잠시 후 다시 시도해줘.\n\n" + (jsonData['Note']||jsonData['Information']));
+        if(jsonData.status === 'error' || jsonData.code){
+            alert("Twelve Data 요청 실패: " + (jsonData.message || '알 수 없는 오류') + "\n(요청 한도를 넘었거나, 티커/키 설정을 확인해줘)");
             return;
         }
         if(jsonData.error){ alert("데이터를 불러오지 못했어: " + jsonData.error); return; }
 
-        const series = jsonData['Time Series (1min)'];
-        if(!series){ alert("데이터가 비어있어. 티커를 확인하거나(예: AAPL), 미국 장 마감/휴장 시간이라 최근 데이터가 없을 수 있어."); return; }
+        const values = jsonData.values;
+        if(!values || values.length === 0){ alert("데이터가 비어있어. 티커를 확인하거나(예: AAPL), 미국 장 마감/휴장 시간이라 최근 데이터가 없을 수 있어."); return; }
 
-        const timestamps = Object.keys(series).sort(); // 오래된 순으로 정렬
-        const last500 = timestamps.slice(-500);
-        const candles = last500.map((ts, i) => {
-            const c = series[ts];
-            const o = parseFloat(c['1. open']), h = parseFloat(c['2. high']), l = parseFloat(c['3. low']), close = parseFloat(c['4. close']), v = parseFloat(c['5. volume']);
+        const chronological = [...values].reverse(); // Twelve Data는 최신순으로 주므로 과거→현재 순으로 뒤집기
+        const candles = chronological.map((c, i) => {
+            const o = parseFloat(c.open), h = parseFloat(c.high), l = parseFloat(c.low), close = parseFloat(c.close), v = parseFloat(c.volume);
             return {t:i, open:o, high:h, low:l, close, o, h, l, c:close, v};
         });
 
         dataMode = 'real_live';
-        startRound({label: `미국 주식 1분봉 · ${symbol.toUpperCase()} (Alpha Vantage)`, candles});
+        startRound({label: `미국 주식 1분봉 · ${symbol.toUpperCase()} (Twelve Data)`, candles});
 
         // 실시간 모니터링 화면에서도 AI 분석 버튼을 바로 쓸 수 있게 활성화
         document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
