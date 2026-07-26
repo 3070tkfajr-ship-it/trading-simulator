@@ -128,6 +128,30 @@
     <div id="copyStatus" style="font-size:12px; color:var(--good); margin-top:6px; display:none;">복사됨 — 채팅창에 붙여넣어주세요!</div>
   </div>
 
+
+<!-- 스크린샷 AI 분석 패널 추가 -->
+  <div class="panel" id="aiAnalysisPanel">
+    <h2>🤖 AI 차트 스크린샷 분석 (Gemini Vision)</h2>
+    <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+      토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 타점 관점에서 분석해 줍니다.
+    </div>
+    
+    <div class="srcbar">
+      <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
+      <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
+      <button id="btnAnalyze" class="live-btn" disabled>분석 요청하기</button>
+    </div>
+
+    <!-- 이미지 미리보기 영역 -->
+    <div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
+      <img id="chartPreview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--line);">
+    </div>
+
+    <!-- 분석 결과 텍스트 영역 -->
+    <div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
+      분석 결과가 여기에 표시됩니다.
+    </div>
+  </div>
 </div>
 
 <script>
@@ -866,6 +890,84 @@ document.getElementById('btnLoadReal').addEventListener('click', async () => {
 
 window.addEventListener('resize', ()=>{ if(session) render(); });
 startRound(genSyntheticSession(7));
+  /* ---------------- AI 스크린샷 분석 로직 ---------------- */
+const imageInput = document.getElementById('chartImageInput');
+const chartPreview = document.getElementById('chartPreview');
+const previewContainer = document.getElementById('imagePreviewContainer');
+const btnAnalyze = document.getElementById('btnAnalyze');
+const aiResultBox = document.getElementById('aiResultBox');
+
+let base64Image = null;
+
+// 1. 이미지 선택 시 미리보기 띄우기
+imageInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    base64Image = event.target.result; // Base64 형태로 저장
+    chartPreview.src = base64Image;
+    previewContainer.style.display = 'block';
+    btnAnalyze.disabled = false;
+    aiResultBox.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+// 2. 분석 요청 버튼 클릭 시 (API 연동 뼈대)
+btnAnalyze.addEventListener('click', async function() {
+  if (!base64Image) return;
+
+  // UI 상태 변경 (로딩 중)
+  btnAnalyze.textContent = '분석 중... ⏳';
+  btnAnalyze.disabled = true;
+  aiResultBox.style.display = 'block';
+  aiResultBox.innerHTML = '<span style="color:var(--muted);">AI가 이미지를 눈 빠지게 읽고 있습니다... 잠시만 기다려주세요.</span>';
+
+  try {
+    /* 
+      🚨 [중요 보안 경고] 🚨
+      여기에 구글 Gemini(또는 GPT) API를 직접 호출하는 fetch 코드를 짤 수 있지만, 
+      API Key를 이 HTML에 적어서 GitHub에 올리면 100% 해킹당해 요금 폭탄을 맞습니다.
+      
+      따라서, 앞서 띄워둔 '자바 프록시 서버'나 'Render 서버'에 이미지를 보내고,
+      서버가 AI에게 물어본 뒤 결과를 돌려받는 방식으로 구현해야 합니다.
+    */
+    
+    // 예시: 내 로컬 서버로 분석 요청 보내기 (가정)
+    // const response = await fetch('http://localhost:8080/analyze', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ image: base64Image.split(',')[1] }) // base64 헤더 제거 후 전송
+    // });
+    // const data = await response.json();
+    
+    // 임시 테스트용 가짜 응답 (서버 연결 전까지 UI 테스트용)
+    setTimeout(() => {
+      aiResultBox.innerHTML = `
+<b>[AI 차트 분석 결과]</b>
+
+<b>1. 현재 지표 상태 (VWAP & EMA)</b>
+- <b>VWAP:</b> 주가가 VWAP 위에 안착해 지지를 받는 모습이 보입니다.
+- <b>EMA 정렬:</b> 5선이 9선과 20선을 골든크로스 하려는 초입 단계입니다.
+
+<b>2. 모멘텀 (Stochastic RSI)</b>
+- %K가 과매도권(20 이하)을 탈출하며 반등 시그널을 보내고 있습니다.
+
+<b>💡 앤드루 아지즈 타점 평가: 78점 (단기 롱/매수 우위)</b>
+손절선을 바로 아래 VWAP(주황색 선) 라인으로 짧게 잡고 진입해 볼 만한 근거가 충분합니다. VWAP 이탈 시 즉시 컷하세요.`;
+      
+      btnAnalyze.textContent = '분석 요청하기';
+      btnAnalyze.disabled = false;
+    }, 2000);
+
+  } catch (error) {
+    aiResultBox.innerHTML = '<span style="color:var(--red);">분석 중 에러가 발생했습니다. 서버 연결을 확인해 주세요.</span>';
+    btnAnalyze.textContent = '분석 요청하기';
+    btnAnalyze.disabled = false;
+  }
+});
 </script>
 </body>
 </html>
