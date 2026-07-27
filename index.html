@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -14,11 +15,7 @@
     --sans: -apple-system,'Apple SD Gothic Neo','Pretendard',BlinkMacSystemFont,'Segoe UI',sans-serif;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; padding-bottom:52px; }
-  #watchlistBarWrap{ position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--panel); border-top:1px solid var(--line); padding:8px 10px; box-sizing:border-box; }
-  #watchlistBar{ display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .watch-btn{ flex:0 0 auto; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; }
-  .watch-btn:active{ background:var(--cyan); color:#04342C; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
   .wrap{max-width:1040px;margin:0 auto;padding:18px 16px 60px;}
   .topbar{ display:flex; align-items:baseline; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
   .topbar h1{font-size:17px; font-weight:700; margin:0; letter-spacing:-0.2px;}
@@ -65,9 +62,6 @@
 </style>
 </head>
 <body>
-  <div id="watchlistBarWrap">
-    <div id="watchlistBar"></div>
-  </div>
 <div class="wrap">
 
   <div class="topbar">
@@ -82,7 +76,6 @@
     <div class="srcbar">
       <span id="srcBadge" class="badge live">● 합성(연습용) 데이터</span>
       <button id="btnLoadReal" class="live-btn">📡 실시간 모니터링 (한투 API)</button>
-      <button id="btnLoadUs" class="live-btn">🇺🇸 미국 주식 불러오기 (Twelve Data)</button>
       <button id="btnToggleCsv" class="ghost">📁 HTS 과거 데이터 복기 ▾</button>
       <button id="btnNewRound" class="primary">🎲 과거 합성 차트 연습</button>
     </div>
@@ -93,29 +86,33 @@
   </div>
 
    <!-- 🤖 AI 차트 스크린샷 분석 패널 -->
+
   <div class="panel" id="aiAnalysisPanel">
     <h2>🤖 AI 차트 스크린샷 분석</h2>
     <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
       토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 아지즈 기법 기준으로 타점을 분석해 줍니다.<br>
       <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
     </div>
-    
-    <div class="srcbar">
-      <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
-      <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
-      <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
-      <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
-    </div>
 
-    <!-- 이미지 미리보기 영역 -->
-    <div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
-      <img id="chartPreview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--line);">
-    </div>
+```
+<div class="srcbar">
+  <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
+  <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
+  <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
+  <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
+</div>
 
-    <!-- 분석 결과 텍스트 영역 -->
-    <div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
-      분석 결과가 여기에 표시됩니다.
-    </div>
+<!-- 이미지 미리보기 영역 -->
+<div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
+  <img id="chartPreview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--line);">
+</div>
+
+<!-- 분석 결과 텍스트 영역 -->
+<div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
+  분석 결과가 여기에 표시됩니다.
+</div>
+```
+
   </div>
 
   <div class="panel">
@@ -130,31 +127,30 @@
       </div>
     </div>
     <canvas id="priceCanvas" height="360"></canvas>
-        <h2 style="margin:16px 0 8px;">최근 60분 (초단타 구간)</h2>
-    <canvas id="zoomCanvas" height="220"></canvas>
     <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
     <div id="whatIfBox" style="display:none; margin-top:10px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>
 
-     <h2 style="margin:16px 0 8px;">거래량 (Volume)</h2>
-    <canvas id="volCanvas" height="80"></canvas>
-    <h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
-    <canvas id="stochCanvas" height="120"></canvas>
+```
+<h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
+<canvas id="stochCanvas" height="120"></canvas>
 
-    <div class="controls">
-      <button id="btnStep">▶ 다음 1분 보기</button>
-      <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
-      <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
-      <button id="btnAnalyzeCurrent" class="live-btn" style="display:none;">🤖 현재 차트 AI 분석</button>
-      <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
-    </div>
-    <div style="margin-top:10px;">
-      <textarea id="rationale" placeholder="진입 근거 메모 (선택) — 예: VWAP 지지+EMA5/9 골든크로스+StochRSI 반등" style="min-height:40px;"></textarea>
-    </div>
-    <div class="controls">
-      <button id="btnLong" class="buy">🟢 롱(매수) 진입</button>
-      <button id="btnShort" class="primary">🔻 숏(공매도) 진입</button>
-      <button id="btnPass" class="ghost">⏭ 패스(관망)</button>
-    </div>
+<div class="controls">
+  <button id="btnStep">▶ 다음 1분 보기</button>
+  <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
+  <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
+  <button id="btnAnalyzeCurrent" class="live-btn" style="display:none;">🤖 현재 차트 AI 분석</button>
+  <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
+</div>
+<div style="margin-top:10px;">
+  <textarea id="rationale" placeholder="진입 근거 메모 (선택) — 예: VWAP 지지+EMA5/9 골든크로스+StochRSI 반등" style="min-height:40px;"></textarea>
+</div>
+<div class="controls">
+  <button id="btnLong" class="buy">🟢 롱(매수) 진입</button>
+  <button id="btnShort" class="primary">🔻 숏(공매도) 진입</button>
+  <button id="btnPass" class="ghost">⏭ 패스(관망)</button>
+</div>
+```
+
   </div>
 
   <div class="panel" id="resultPanel" style="display:none;">
@@ -349,8 +345,6 @@ function render(){
   closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction && !viewAllMode ? 'inline' : 'none';
 
   drawPriceChart(visible, revealEnd);
-  drawZoomChart(revealEnd);   // ← 추가
-  drawVolChart(revealEnd);
   drawStochChart(revealEnd);
 
   const selInfo = document.getElementById('selInfo');
@@ -418,192 +412,22 @@ function drawPriceChart(visible, upto){
   }
 }
 
-  function drawZoomChart(upto){
-  const zoomCanvas = document.getElementById('zoomCanvas');
-  if(!zoomCanvas || !session) return;
-  const ctx = zoomCanvas.getContext('2d');
-  const W = zoomCanvas.clientWidth || 1000;
-  const H = 220;
-  zoomCanvas.width = W * 2;
-  zoomCanvas.height = H * 2;
-  ctx.scale(2, 2);
-  ctx.clearRect(0, 0, W, H);
-
-  const win = 60;
-  const end = upto;
-  const start = Math.max(0, end - win + 1);
-  const slice = session.candles.slice(start, end + 1);
-  const n = slice.length;
-  if(n < 2) return;
-
-  const padL = 54, padR = 10, padT = 10, padB = 10;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-
-  let lo = Infinity, hi = -Infinity;
-  for(const cd of slice){ lo = Math.min(lo, cd.low); hi = Math.max(hi, cd.high); }
-  for(let i = start; i <= end; i++){
-    for(const arr of [indicators.vwap, indicators.ema5, indicators.ema9, indicators.ema20, indicators.ema200]){
-      if(arr[i] != null){ lo = Math.min(lo, arr[i]); hi = Math.max(hi, arr[i]); }
-    }
-  }
-  const pad = (hi - lo) * 0.08 || 10;
-  lo -= pad; hi += pad;
-
-  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
-  const yAt = p => padT + (1 - (p - lo) / (hi - lo)) * plotH;
-
-  // 그리드
-  ctx.strokeStyle = '#1C2530';
-  ctx.fillStyle = '#5B6673';
-  ctx.font = '10px monospace';
-  for(let g = 0; g <= 3; g++){
-    const yy = padT + g * plotH / 3;
-    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
-    ctx.fillText(Math.round(hi - g * (hi - lo) / 3).toLocaleString(), 4, yy + 3);
-  }
-
-  // 캔들
-  const cw = Math.max(2, plotW / n * 0.65);
-  for(let i = 0; i < n; i++){
-    const cd = slice[i];
-    const x = xAt(i);
-    const up = cd.close >= cd.open;
-    ctx.strokeStyle = up ? '#E5484D' : '#3B82F6';
-    ctx.fillStyle = up ? '#E5484D' : '#3B82F6';
-    ctx.beginPath(); ctx.moveTo(x, yAt(cd.high)); ctx.lineTo(x, yAt(cd.low)); ctx.stroke();
-    const yo = yAt(cd.open), yc = yAt(cd.close);
-    ctx.fillRect(x - cw / 2, Math.min(yo, yc), cw, Math.max(1, Math.abs(yo - yc)));
-  }
-
-  // 지표 (전체 배열에서 start~end 구간만)
-  function drawLine(arr, color, width){
-    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
-    let started = false;
-    for(let i = 0; i < n; i++){
-      const v = arr[start + i];
-      if(v == null) continue;
-      const x = xAt(i), y = yAt(v);
-      if(!started){ ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-  drawLine(indicators.vwap, '#F5A623', 1.6);
-  drawLine(indicators.ema5, '#35C9C1', 1.1);
-  drawLine(indicators.ema9, '#E0629E', 1.1);
-  drawLine(indicators.ema20, '#8A93A0', 1.3);
-  drawLine(indicators.ema200, '#5B6BFF', 1.8);
-}
-function drawVolChart(upto){
-  const volCanvas = document.getElementById('volCanvas');
-  if(!volCanvas || !session) return;
-  const ctx = volCanvas.getContext('2d');
-  const W = volCanvas.clientWidth || 1000;
-  const H = 80;
-  volCanvas.width = W * 2;
-  volCanvas.height = H * 2;
-  ctx.scale(2, 2);
-  ctx.clearRect(0, 0, W, H);
-
-  const padL = 54, padR = 10, padT = 6, padB = 6;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = upto + 1;
-  const candles = session.candles.slice(0, n);
-
-  // 최근 20개 평균 (기준선용)
-  let avgV = 0, cnt = 0;
-  const start = Math.max(0, n - 20);
-  for(let i = start; i < n; i++){
-    if(candles[i].v != null && !isNaN(candles[i].v)){
-      avgV += candles[i].v;
-      cnt++;
-    }
-  }
-  avgV = cnt > 0 ? avgV / cnt : 0;
-
-  // 상위 10% 제외한 스케일 (장마감 폭발 봉 방지)
-  const vols = [];
-  for(const c of candles){
-    if(c.v != null && !isNaN(c.v) && c.v > 0) vols.push(c.v);
-  }
-  vols.sort((a, b) => a - b);
-  let maxV = 1;
-  if(vols.length){
-    const idx = Math.max(0, Math.floor(vols.length * 0.90) - 1);
-    maxV = vols[idx];
-  }
-
-  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
-  const yAt = v => padT + (1 - Math.min(v, maxV) / maxV) * plotH;
-  const barW = Math.max(1, plotW / n * 0.6);
-
-  for(let i = 0; i < n; i++){
-    const c = candles[i];
-    if(c.v == null || isNaN(c.v) || c.v <= 0) continue;
-    const x = xAt(i);
-    const up = c.close >= c.open;
-    const isHigh = avgV > 0 && c.v >= avgV * 1.5;
-    ctx.fillStyle = isHigh
-      ? (up ? '#3ECF8E' : '#E5484D')
-      : (up ? 'rgba(62,207,142,0.45)' : 'rgba(229,72,77,0.45)');
-    const top = yAt(c.v);
-    ctx.fillRect(x - barW / 2, top, barW, padT + plotH - top);
-  }
-
-  // 평균선
-  if(avgV > 0){
-    ctx.strokeStyle = 'rgba(245,166,35,0.7)';
-    ctx.setLineDash([4, 3]);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    const y = yAt(avgV);
-    ctx.moveTo(padL, y);
-    ctx.lineTo(W - padR, y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-}
-
 function drawStochChart(upto){
-  const ctx = stochCanvas.getContext('2d');
-  const W = stochCanvas.clientWidth || 1000;
-  const H = 120;
-  stochCanvas.width = W * 2;
-  stochCanvas.height = H * 2;
-  ctx.scale(2, 2);
-  ctx.clearRect(0, 0, W, H);
-  const padL = 54, padR = 10, padT = 8, padB = 8;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = upto + 1;
-  const xAt = i => padL + (i / Math.max(n - 1, 1)) * plotW;
-  const yAt = v => padT + (1 - v / 100) * plotH;
-  ctx.strokeStyle = '#1C2530';
-  [20, 50, 80].forEach(v => {
-    ctx.beginPath();
-    ctx.moveTo(padL, yAt(v));
-    ctx.lineTo(W - padR, yAt(v));
-    ctx.stroke();
-  });
-  ctx.fillStyle = '#5B6673';
-  ctx.font = '10px monospace';
-  ctx.fillText('80', 4, yAt(80) + 3);
-  ctx.fillText('20', 4, yAt(20) + 3);
-  function drawLine(arr, color){
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    let started = false;
-    for(let i = 0; i < n; i++){
-      if(arr[i] == null) continue;
-      const x = xAt(i), y = yAt(arr[i]);
-      if(!started){ ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+  const ctx = stochCanvas.getContext('2d'); const W = stochCanvas.clientWidth || 1000; const H = 120;
+  stochCanvas.width=W*2; stochCanvas.height=H*2; ctx.scale(2,2); ctx.clearRect(0,0,W,H);
+  const padL=54, padR=10, padT=8, padB=8; const plotW=W-padL-padR, plotH=H-padT-padB; const n = upto+1;
+  const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = v => padT + (1-v/100)*plotH;
+
+  ctx.strokeStyle='#1C2530'; [20,50,80].forEach(v=>{ ctx.beginPath(); ctx.moveTo(padL,yAt(v)); ctx.lineTo(W-padR,yAt(v)); ctx.stroke(); });
+  ctx.fillStyle='#5B6673'; ctx.font='10px monospace'; ctx.fillText('80',4,yAt(80)+3); ctx.fillText('20',4,yAt(20)+3);
+
+  function drawLine(arr,color){
+    ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.beginPath(); let started=false;
+    for(let i=0;i<n;i++){ if(arr[i]==null) continue; const x=xAt(i), y=yAt(arr[i]); if(!started){ctx.moveTo(x,y); started=true;} else ctx.lineTo(x,y); } ctx.stroke();
   }
-  drawLine(indicators.stoch.K.slice(0, n), '#35C9C1');
-  drawLine(indicators.stoch.D.slice(0, n), '#E0629E');
+  drawLine(indicators.stoch.K.slice(0,n), '#35C9C1'); drawLine(indicators.stoch.D.slice(0,n), '#E0629E');
 }
+
 /* ---------------- 상호작용 및 결과 처리 ---------------- */
 document.getElementById('btnStep').addEventListener('click', ()=>{
   if(direction || dataMode==='real_live') return;
@@ -1071,8 +895,14 @@ document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
 });
 
 // 한투 API 실시간 연동 (일봉/분봉 500개 지원 + 실시간 분석 버튼 활성화)
-async function loadDomestic(code, tf) {
-    tf = tf || "1m";
+document.getElementById('btnLoadReal').addEventListener('click', async () => {
+    const input = prompt("조회할 종목코드 (기본 1분봉 500개. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉 500개) / 114800,D (일봉)", "114800"); 
+    if(!input) return;
+    
+    const parts = input.split(",");
+    const code = parts[0].trim();
+    const tf = parts.length > 1 ? parts[1].trim().toUpperCase() : "1m";
+
     try {
         const res = await fetch(`https://kis-proxy-server-di40.onrender.com/data?code=${code}&tf=${tf}`); 
         const jsonData = await res.json();
@@ -1081,19 +911,43 @@ async function loadDomestic(code, tf) {
             alert("데이터를 불러오지 못했습니다. 장 운영 시간이 아니거나 종목코드를 확인해 줘."); return; 
         }
         
-        const rawCandles = jsonData.output2; 
-        rawCandles.reverse(); // 과거 데이터부터 정방향 정렬
-        
+        const rawCandles = jsonData.output2;
+
+        // 🚀 정렬 키: 날짜(yyyyMMdd)를 먼저, 시각(HHmmss)을 뒤에 붙여야 실제 시간순으로 정렬됨.
+        // (시각을 먼저 붙이면 여러 날짜가 섞였을 때 날짜가 아니라 시:분:초 기준으로 먼저 정렬되는 버그가 생김)
+        function sortKey(c){
+            const date = c.stck_bsop_date || '';
+            const time = c.stck_cntg_hour || '000000';
+            return date + time;
+        }
+        rawCandles.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+
         const candles = [];
+        const seenKeys = new Set(); // 서버에서 중복 제거가 됐어도, 프론트에서 한 번 더 방어
         for(let i=0; i<rawCandles.length; i++) {
-            const c = rawCandles[i]; 
-            const o = parseFloat(c.stck_oprc); 
-            const h = parseFloat(c.stck_hgpr); 
-            const l = parseFloat(c.stck_lwpr); 
-            const close = parseFloat(c.stck_prpr || c.stck_clpr); 
+            const c = rawCandles[i];
+            const key = sortKey(c);
+            if(seenKeys.has(key)) continue;
+            seenKeys.add(key);
+
+            const o = parseFloat(c.stck_oprc);
+            const h = parseFloat(c.stck_hgpr);
+            const l = parseFloat(c.stck_lwpr);
+            const close = parseFloat(c.stck_prpr || c.stck_clpr);
             const v = parseFloat(c.cntg_vol || c.acml_vol);
-            
-            candles.push({t: i, open: o, high: h, low: l, close: close, o, h, l, c: close, v});
+
+            // 값이 없거나(NaN) 0 이하인 이상치 캔들, 그리고 거래량이 0인 "가짜 채움/무거래" 캔들은 걸러낸다.
+            // (원인이 API 버그든 실제 거래정지/VI든, 거래량 0인 구간은 VWAP·EMA 계산에 넣으면 지표만 왜곡되므로 제외)
+            if(!(o > 0) || !(h > 0) || !(l > 0) || !(close > 0)) continue;
+            if(!(v > 0)) continue;
+
+            candles.push({t: candles.length, open: o, high: h, low: l, close: close, o, h, l, c: close, v: isNaN(v) ? 0 : v});
+        }
+
+        if(candles.length < 2) {
+            alert("유효한 캔들이 거의 없습니다 (정렬/필터 후 " + candles.length + "개). 원본 응답을 콘솔에서 확인해줘.");
+            console.warn('원본 output2:', jsonData.output2);
+            return;
         }
         
         dataMode = 'real_live'; 
@@ -1101,82 +955,14 @@ async function loadDomestic(code, tf) {
         startRound({label: labelText, candles});
 
         // 🚀 핵심 포인트: 실시간 모니터링 화면이 떴을 때도 AI 분석 버튼을 바로 쓸 수 있게 강제 활성화!
-        document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
+       document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
         document.getElementById('aiAnalysisPanel').style.display = 'block';
         
     } catch(e) { 
         alert("서버와 연결할 수 없어. Render 서버가 깨어나는 중(최대 1분)일 수 있으니 잠시 후 다시 시도해줘!"); 
     }
-}
-
-document.getElementById('btnLoadReal').addEventListener('click', () => {
-    const input = prompt("조회할 종목코드 (기본 1분봉 500개. 일봉을 보려면 뒤에 ,D 입력)\n예시: 114800 (1분봉 500개) / 114800,D (일봉)", "114800"); 
-    if(!input) return;
-    const parts = input.split(",");
-    loadDomestic(parts[0].trim(), parts.length > 1 ? parts[1].trim().toUpperCase() : "1m");
 });
-
-// 🇺🇸 Twelve Data 미국 주식 1분봉 연동 (무료: 하루 800회, 분당 8회)
-async function loadUs(symbol) {
-    try {
-        const res = await fetch(`https://kis-proxy-server-di40.onrender.com/us-data?symbol=${encodeURIComponent(symbol)}`);
-        const jsonData = await res.json();
-
-        if(jsonData.status === 'error' || jsonData.code){
-            alert("Twelve Data 요청 실패: " + (jsonData.message || '알 수 없는 오류') + "\n(요청 한도를 넘었거나, 티커/키 설정을 확인해줘)");
-            return;
-        }
-        if(jsonData.error){ alert("데이터를 불러오지 못했어: " + jsonData.error); return; }
-
-        const values = jsonData.values;
-        if(!values || values.length === 0){ alert("데이터가 비어있어. 티커를 확인하거나(예: AAPL), 미국 장 마감/휴장 시간이라 최근 데이터가 없을 수 있어."); return; }
-
-        const chronological = [...values].reverse(); // Twelve Data는 최신순으로 주므로 과거→현재 순으로 뒤집기
-        const candles = chronological.map((c, i) => {
-            const o = parseFloat(c.open), h = parseFloat(c.high), l = parseFloat(c.low), close = parseFloat(c.close), v = parseFloat(c.volume);
-            return {t:i, open:o, high:h, low:l, close, o, h, l, c:close, v};
-        });
-
-        dataMode = 'real_live';
-        startRound({label: `미국 주식 1분봉 · ${symbol.toUpperCase()} (Twelve Data)`, candles});
-
-        // 실시간 모니터링 화면에서도 AI 분석 버튼을 바로 쓸 수 있게 활성화
-        document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
-        document.getElementById('aiAnalysisPanel').style.display = 'block';
-
-    } catch(e) {
-        alert("서버(kis-proxy-server)와 연결할 수 없어. Render가 슬립 상태면 첫 요청은 30~60초 걸릴 수 있으니 잠시 후 다시 시도해줘!");
-    }
-}
-
-document.getElementById('btnLoadUs').addEventListener('click', () => {
-    const symbol = prompt("조회할 미국 주식 티커를 입력하세요 (예: AAPL, TSLA, NVDA)", "AAPL");
-    if(!symbol) return;
-    loadUs(symbol);
-});
-
-/* ---------------- ⭐ 관심종목 바로가기 ---------------- */
-const WATCHLIST = [
-  {label:'삼성전자', code:'005930', market:'kr'},
-  {label:'SK하이닉스', code:'000660', market:'kr'},
-  {label:'KODEX 200', code:'069500', market:'kr'},
-  {label:'KODEX 인버스', code:'114800', market:'kr'},
-  {label:'삼성증권', code:'016360', market:'kr'},
-  {label:'SOXL', code:'SOXL', market:'us'},
-  {label:'QQQ', code:'QQQ', market:'us'},
-  {label:'VOO', code:'VOO', market:'us'}
-];
-const watchlistBar = document.getElementById('watchlistBar');
-WATCHLIST.forEach(item => {
-  const btn = document.createElement('button');
-  btn.className = 'watch-btn';
-  btn.textContent = item.label;
-  btn.addEventListener('click', () => {
-    if(item.market === 'kr') loadDomestic(item.code, '1m');
-    else loadUs(item.code);
-  });
-  watchlistBar.appendChild(btn);
-});
+/* ---------------- 🚀 AI 스크린샷 분석 로직 ---------------- */
 const imageInput = document.getElementById('chartImageInput');
 const chartPreview = document.getElementById('chartPreview');
 const previewContainer = document.getElementById('imagePreviewContainer');
@@ -1294,31 +1080,17 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
-    const pCanvas = document.getElementById('priceCanvas');
-    const zCanvas = document.getElementById('zoomCanvas');
-    const vCanvas = document.getElementById('volCanvas');
-    const sCanvas = document.getElementById('stochCanvas');
+    const priceCanvas = document.getElementById('priceCanvas');
+    const stochCanvas = document.getElementById('stochCanvas');
     const combined = document.createElement('canvas');
-    const gap = 10;
-    const hZoom = zCanvas ? zCanvas.height : 0;
-    const hVol = vCanvas ? vCanvas.height : 0;
-    combined.width = pCanvas.width;
-    combined.height = pCanvas.height + hZoom + hVol + sCanvas.height + gap * 3;
+    const gap = 12;
+    combined.width = priceCanvas.width;
+    combined.height = priceCanvas.height + stochCanvas.height + gap;
     const ctx = combined.getContext('2d');
     ctx.fillStyle = '#10161F';
     ctx.fillRect(0, 0, combined.width, combined.height);
-    let y = 0;
-    ctx.drawImage(pCanvas, 0, y);
-    y += pCanvas.height + gap;
-    if (zCanvas) {
-      ctx.drawImage(zCanvas, 0, y);
-      y += zCanvas.height + gap;
-    }
-    if (vCanvas) {
-      ctx.drawImage(vCanvas, 0, y);
-      y += vCanvas.height + gap;
-    }
-    ctx.drawImage(sCanvas, 0, y);
+    ctx.drawImage(priceCanvas, 0, 0);
+    ctx.drawImage(stochCanvas, 0, priceCanvas.height + gap);
 
     const base64Data = combined.toDataURL('image/png').split(',')[1];
     const response = await fetch(endpoint, {
@@ -1344,5 +1116,6 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   }
 });
 </script>
+
 </body>
 </html>
