@@ -469,44 +469,62 @@ function drawPriceChart(visible, upto){
     ctx.fillStyle='#DCE4EC'; ctx.font='10px sans-serif'; ctx.fillText('복기', x-9, padT+11);
   }
 
-  /* ---------------- 하단 시간축 (KST 시:분 + 날짜/월 바뀔 때 강조) ---------------- */
+  /* ---------------- 하단 시간축 (KST 2시간 단위 정각 + 날짜 바뀌면 MM/DD로 강조) ---------------- */
   const axisTop = H;
   ctx.strokeStyle = '#1C2530'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
 
-  const timeFmt = new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hour12:false});
+  const hmParts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
   const dateKeyFmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'});
-  const monthFmt = new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul', month:'long'});
+  const getHM = dt => { const p={}; hmParts.formatToParts(dt).forEach(x=>{ if(x.type!=='literal') p[x.type]=x.value; }); return {h:+p.hour, m:+p.minute}; };
 
-  const targetTicks = Math.max(2, Math.floor(plotW/90)); // 약 90px당 눈금 하나
-  const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
   ctx.textAlign = 'center';
-  let lastDateKey = null;
-  for(let i=0; i<n; i+=tickStep){
+  let lastDateKey = null, lastTickX = -Infinity, ticksDrawn = 0;
+  for(let i=0; i<n; i++){
     const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
-    const dt = new Date(cd.epochMs);
-    const dateKey = dateKeyFmt.format(dt);
+    const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
+    if(!(mm===0 && hh%2===0)) continue; // 2시간 단위 정각(00:00, 02:00, 04:00 ...)에서만 눈금 표시
     const x = xAt(i);
+    if(x - lastTickX < 34) continue; // 라벨 겹침 방지
+    lastTickX = x; ticksDrawn++;
+
+    const dateKey = dateKeyFmt.format(dt);
     ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
     if(dateKey !== lastDateKey && lastDateKey !== null){
-      // 날짜(일)가 바뀌는 지점: 시각 대신 "월" 라벨을 굵게 강조 (TradingView 스타일)
       ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
-      ctx.fillText(monthFmt.format(dt), x, axisTop+16);
+      ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16); // "YYYY-MM-DD" → "MM/DD"
     } else {
       ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
-      ctx.fillText(timeFmt.format(dt), x, axisTop+16);
+      ctx.fillText(`${String(hh).padStart(2,'0')}:00`, x, axisTop+16);
     }
     lastDateKey = dateKey;
+  }
+  // 표시 구간이 2시간보다 짧아 정각 눈금이 하나도 안 걸리는 경우를 위한 대체 눈금(균등 간격, 실제 시:분)
+  if(ticksDrawn===0){
+    const targetTicks = Math.max(2, Math.floor(plotW/90));
+    const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
+    let fallbackLastDateKey = null;
+    for(let i=0; i<n; i+=tickStep){
+      const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
+      const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
+      const x = xAt(i); const dateKey = dateKeyFmt.format(dt);
+      ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
+      if(dateKey !== fallbackLastDateKey && fallbackLastDateKey !== null){
+        ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
+        ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16);
+      } else {
+        ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
+        ctx.fillText(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, x, axisTop+16);
+      }
+      fallbackLastDateKey = dateKey; lastTickX = x;
+    }
   }
   // 맨 오른쪽(최신 캔들) 시각은 항상 별도로 강조 표시 — 눈금 간격상 잘리기 쉬운 위치라 겹치지 않을 때만 그림
   if(n>0){
     const lastCd = visible[n-1];
-    if(lastCd && lastCd.epochMs!=null){
-      const lastTickIdx = Math.floor((n-1)/tickStep)*tickStep;
-      const lastTickX = xAt(lastTickIdx);
-      if((W-padR) - lastTickX > 40){
-        ctx.fillStyle = '#F5A623'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
-        ctx.fillText(timeFmt.format(new Date(lastCd.epochMs)), W-padR, axisTop+16);
-      }
+    if(lastCd && lastCd.epochMs!=null && (W-padR) - lastTickX > 40){
+      const {h:lh, m:lm} = getHM(new Date(lastCd.epochMs));
+      ctx.fillStyle = '#F5A623'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
+      ctx.fillText(`${String(lh).padStart(2,'0')}:${String(lm).padStart(2,'0')}`, W-padR, axisTop+16);
     }
   }
   ctx.textAlign = 'left';
