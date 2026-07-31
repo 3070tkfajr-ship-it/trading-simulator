@@ -63,11 +63,84 @@
   .scoreBarFill{height:100%; border-radius:5px;}
   .scoreBarRow .num{font-family:var(--mono); width:48px; text-align:right; flex-shrink:0;}
   footer{color:var(--muted); font-size:11px; text-align:center; margin-top:26px; line-height:1.7;}
+
+  /* ---- 📝 티커 메모장 (자유 텍스트, 자동 저장) ---- */
+  #memoFab{ position:fixed; right:14px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:19px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
+  #memoFab:hover{background:#1B2432;}
+  #memoFab.has-content{border-color:var(--amber); color:var(--amber);}
+  #memoPanel{ position:fixed; right:14px; bottom:118px; z-index:60; width:min(280px, calc(100vw - 28px)); max-height:min(360px, 60vh);
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.5);
+    display:none; flex-direction:column; overflow:hidden; }
+  #memoPanel.open{display:flex;}
+  #memoPanelHead{ display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(--line); }
+  #memoPanelHead span{font-size:12px; font-weight:700; color:var(--text);}
+  #memoStatus{font-size:10px; color:var(--muted); font-family:var(--mono);}
+  #memoCloseBtn{background:transparent; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 4px; line-height:1;}
+  #memoCloseBtn:hover{color:var(--text);}
+  #memoTextarea{ flex:1; width:100%; min-height:180px; background:var(--panel-2); color:var(--text); border:none;
+    font-family:var(--mono); font-size:12px; padding:10px; resize:vertical; line-height:1.6; }
+  #memoTextarea:focus{outline:none;}
+
+  /* ---- ⚠️ 매매 전 경고 게이트 (역매매 위험성) ---- */
+  #warnGateOverlay{ position:fixed; inset:0; z-index:200; background:rgba(6,9,13,.86); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  #warnGateOverlay.hidden{display:none;}
+  #warnGateCard{ width:min(520px, 100%); max-height:86vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:26px 24px 20px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  #warnGateCard h3{ margin:0 0 4px; font-size:17px; color:var(--red); display:flex; align-items:center; gap:8px; }
+  #warnGateCard .sub{ font-size:11.5px; color:var(--muted); margin-bottom:16px; }
+  #warnGateCard .body{ font-size:13.5px; line-height:1.85; color:var(--text); }
+  #warnGateCard .body p{margin:0 0 12px;}
+  #warnGateCard .body b{color:var(--amber);}
+  #warnGateCard .checklist{ list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:8px; }
+  #warnGateCard .checklist li{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:13px; line-height:1.6; }
+  #warnGateCard .checklist li b{color:var(--cyan);}
+  #warnGateCard .ruleBox{ background:#241417; border:1px solid #4A2129; border-radius:8px; padding:11px 13px; font-size:12.5px; line-height:1.7; color:#F0A6AC; margin-bottom:6px; }
+  #warnGateCard .ruleBox b{color:var(--red);}
+  #warnGateVisitNote{ margin-top:14px; font-size:11px; color:var(--muted); font-family:var(--mono); border-top:1px solid var(--line); padding-top:10px; }
+  #warnGateBtns{ display:flex; gap:8px; margin-top:18px; flex-wrap:wrap; }
+  #warnGateBtns button{flex:1; min-width:140px;}
+  #btnGateSkipToday[disabled]{ opacity:.3; cursor:not-allowed; }
+  #btnGateSkipToday[disabled]::after{ content:' (오늘 10회 이상 접속해야 활성화)'; font-size:10px; }
 </style>
 </head>
 <body>
+  <div id="warnGateOverlay" class="hidden">
+    <div id="warnGateCard">
+      <h3>⚠️ 지금, 원웨이 장을 거스르려는 건 아닌가요?</h3>
+      <div class="sub">원웨이 장 역매매의 위험성 — 매매 전 자문 체크</div>
+      <div class="body">
+        <p>단타 손실의 상당수는 박스권이 아니라, <b>지수·주도주가 한쪽 방향으로 거래량을 실어 밀어붙이는 원웨이 장</b>에서 그 흐름을 거스르다가 발생합니다. 하락장에서 "너무 빠졌으니 반등하겠지" 하고 눌림목을 사거나, 상승장에서 "너무 올랐으니 꺾이겠지" 하고 반등을 숏 치는 매매가 대표적입니다.</p>
+        <p>평소 횡보장에서 잘 먹히던 역발상 스타일이, 원웨이 장에서는 손절이 반복되거나 물타기로 번지면서 계좌를 한 번에 무너뜨립니다.</p>
+      </div>
+      <ul class="checklist">
+        <li>① 오늘 시장에 확실한 <b>주도주/주도 섹터의 방향</b>이 있는가?</li>
+        <li>② 지금 들어가려는 자리는 <b>추세에 올라타는 자리</b>인가, <b>떨어지는 칼날을 받는 자리</b>인가?</li>
+        <li>③ 만약 오늘이 원웨이 장이라면, 이 매매의 <b>예상 손실</b>은 얼마인가?</li>
+      </ul>
+      <div class="ruleBox"><b>강제 규칙</b> — 오늘 역매매(추세 역행)로 <b>2회 연속 손절</b>이 나면, 그 순간 원웨이 장으로 인정하고 당일 역매매는 스위치 OFF. 역매매 진입 시에도 손절가 터치는 즉시 칼손절, <b>물타기는 절대 금지</b>.</div>
+      <div id="warnGateVisitNote"></div>
+      <div id="warnGateBtns">
+        <button id="btnGateClose" class="primary">읽었습니다, 닫기</button>
+        <button id="btnGateSkipToday" class="ghost" disabled>오늘 그만보기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="watchlistBarWrap">
     <div id="watchlistBar"></div>
+  </div>
+
+  <button id="memoFab" title="티커 메모장">📝</button>
+  <div id="memoPanel">
+    <div id="memoPanelHead">
+      <span>📝 티커 메모장</span>
+      <span id="memoStatus"></span>
+      <button id="memoCloseBtn">✕</button>
+    </div>
+    <textarea id="memoTextarea" placeholder="추가할 종목/티커를 자유롭게 적어두세요.&#10;예)&#10;NVDA&#10;069500 KODEX 200&#10;삼성바이오로직스 207940"></textarea>
   </div>
 <div class="wrap">
 
@@ -176,6 +249,63 @@
 </div>
 
 <script>
+/* ---------------- ⚠️ 매매 전 경고 게이트 (역매매 위험성) ---------------- */
+(function initWarnGate(){
+  function getKstYMDLocal(date){
+    const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(date || new Date());
+    const y = parts.find(p=>p.type==='year').value, m = parts.find(p=>p.type==='month').value, d = parts.find(p=>p.type==='day').value;
+    return `${y}-${m}-${d}`;
+  }
+  const todayKey = getKstYMDLocal();
+  const VISIT_KEY = 'warnGate_visits_' + todayKey;
+  const SKIP_KEY = 'warnGate_skip_' + todayKey;
+  const SKIP_THRESHOLD = 10;
+
+  let visits = 0;
+  try {
+    visits = parseInt(localStorage.getItem(VISIT_KEY) || '0', 10) || 0;
+    visits += 1;
+    localStorage.setItem(VISIT_KEY, String(visits));
+    // 지난 날짜의 카운터/스킵 기록은 정리 (localStorage가 무한정 쌓이지 않도록)
+    for(let i = localStorage.length - 1; i >= 0; i--){
+      const k = localStorage.key(i);
+      if(k && (k.startsWith('warnGate_visits_') || k.startsWith('warnGate_skip_')) && !k.endsWith(todayKey)){
+        localStorage.removeItem(k);
+      }
+    }
+  } catch(e){ console.warn('경고 게이트 방문 기록 실패:', e); }
+
+  let skippedToday = false;
+  try { skippedToday = localStorage.getItem(SKIP_KEY) === '1'; } catch(e){}
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const overlay = document.getElementById('warnGateOverlay');
+    const closeBtn = document.getElementById('btnGateClose');
+    const skipBtn = document.getElementById('btnGateSkipToday');
+    const note = document.getElementById('warnGateVisitNote');
+    if(!overlay) return;
+
+    if(skippedToday){
+      overlay.classList.add('hidden'); // 이미 "오늘 그만보기"를 눌렀으면 아예 안 띄움
+      return;
+    }
+    overlay.classList.remove('hidden');
+
+    const unlocked = visits >= SKIP_THRESHOLD;
+    skipBtn.disabled = !unlocked;
+    note.textContent = unlocked
+      ? `오늘 접속 ${visits}회째입니다. 이미 충분히 확인하셨으니 '오늘 그만보기'를 눌러 끌 수 있어요.`
+      : `오늘 접속 ${visits}회째 (10회 이상 접속하면 '오늘 그만보기' 버튼이 활성화됩니다)`;
+
+    closeBtn.addEventListener('click', ()=>{ overlay.classList.add('hidden'); });
+    skipBtn.addEventListener('click', ()=>{
+      if(skipBtn.disabled) return;
+      try { localStorage.setItem(SKIP_KEY, '1'); } catch(e){}
+      overlay.classList.add('hidden');
+    });
+  });
+})();
+
 /* ---------------- 유틸: 지표 계산 ---------------- */
 function ema(values, period){
   const out = new Array(values.length).fill(null);
@@ -1223,6 +1353,48 @@ WATCHLIST.forEach(item => {
   });
   watchlistBar.appendChild(btn);
 });
+
+/* ---------------- 📝 티커 메모장 (자유 텍스트, localStorage 자동 저장) ---------------- */
+(function initTickerMemo(){
+  const MEMO_KEY = 'tickerMemoNotes_v1';
+  const fab = document.getElementById('memoFab');
+  const panel = document.getElementById('memoPanel');
+  const closeBtn = document.getElementById('memoCloseBtn');
+  const textarea = document.getElementById('memoTextarea');
+  const status = document.getElementById('memoStatus');
+
+  let saved = '';
+  try { saved = localStorage.getItem(MEMO_KEY) || ''; } catch(e){ console.warn('메모장 불러오기 실패:', e); }
+  textarea.value = saved;
+  if(saved.trim()) fab.classList.add('has-content');
+
+  let saveTimer = null;
+  function saveNow(){
+    try {
+      localStorage.setItem(MEMO_KEY, textarea.value);
+      status.textContent = '저장됨';
+      fab.classList.toggle('has-content', !!textarea.value.trim());
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(()=>{ status.textContent=''; }, 1200);
+    } catch(e){
+      status.textContent = '저장 실패';
+      console.warn('메모장 저장 실패:', e);
+    }
+  }
+  let debounce = null;
+  textarea.addEventListener('input', ()=>{
+    status.textContent = '입력 중…';
+    clearTimeout(debounce);
+    debounce = setTimeout(saveNow, 400);
+  });
+  textarea.addEventListener('blur', saveNow);
+
+  function openPanel(){ panel.classList.add('open'); setTimeout(()=>textarea.focus(), 50); }
+  function closePanel(){ panel.classList.remove('open'); saveNow(); }
+  fab.addEventListener('click', ()=>{ panel.classList.contains('open') ? closePanel() : openPanel(); });
+  closeBtn.addEventListener('click', closePanel);
+})();
+
 /* ---------------- 🚀 AI 스크린샷 분석 로직 ---------------- */
 const imageInput = document.getElementById('chartImageInput');
 const chartPreview = document.getElementById('chartPreview');
