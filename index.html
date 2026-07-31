@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -93,29 +94,33 @@
   </div>
 
    <!-- 🤖 AI 차트 스크린샷 분석 패널 -->
+
   <div class="panel" id="aiAnalysisPanel">
     <h2>🤖 AI 차트 스크린샷 분석</h2>
     <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
       토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 아지즈 기법 기준으로 타점을 분석해 줍니다.<br>
       <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
     </div>
-    
-    <div class="srcbar">
-      <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
-      <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
-      <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
-      <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
-    </div>
 
-    <!-- 이미지 미리보기 영역 -->
-    <div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
-      <img id="chartPreview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--line);">
-    </div>
+```
+<div class="srcbar">
+  <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
+  <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
+  <button id="btnAnalyzeGemini" class="live-btn" disabled>✨ Gemini 분석</button>
+  <button id="btnAnalyzeClaude" class="primary" disabled style="background:#D97706; border-color:#D97706;">🧠 Claude Sonnet 5 분석</button>
+</div>
 
-    <!-- 분석 결과 텍스트 영역 -->
-    <div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
-      분석 결과가 여기에 표시됩니다.
-    </div>
+<!-- 이미지 미리보기 영역 -->
+<div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
+  <img id="chartPreview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--line);">
+</div>
+
+<!-- 분석 결과 텍스트 영역 -->
+<div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
+  분석 결과가 여기에 표시됩니다.
+</div>
+```
+
   </div>
 
   <div class="panel">
@@ -129,30 +134,37 @@
         <span><b style="background:#5B6BFF"></b>EMA200</span>
       </div>
     </div>
-    <canvas id="priceCanvas" height="360"></canvas>
+    <div id="priceChartWrap" style="position:relative;">
+      <canvas id="priceCanvas" height="360"></canvas>
+      <div id="crosshairLine" style="display:none; position:absolute; top:0; bottom:0; width:1px; background:rgba(220,228,236,0.35); pointer-events:none;"></div>
+      <div id="chartTooltip" style="display:none; position:absolute; pointer-events:none; z-index:20; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-family:var(--mono); font-size:11px; color:var(--text); white-space:nowrap; line-height:1.6;"></div>
+    </div>
     <h2 style="margin:10px 0 6px; font-size:11px;">거래량</h2>
     <canvas id="volumeCanvas" height="70"></canvas>
     <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
     <div id="whatIfBox" style="display:none; margin-top:10px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>
 
-    <h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
-    <canvas id="stochCanvas" height="120"></canvas>
+```
+<h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
+<canvas id="stochCanvas" height="120"></canvas>
 
-    <div class="controls">
-      <button id="btnStep">▶ 다음 1분 보기</button>
-      <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
-      <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
-      <button id="btnAnalyzeCurrent" class="live-btn" style="display:none;">🤖 현재 차트 AI 분석</button>
-      <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
-    </div>
-    <div style="margin-top:10px;">
-      <textarea id="rationale" placeholder="진입 근거 메모 (선택) — 예: VWAP 지지+EMA5/9 골든크로스+StochRSI 반등" style="min-height:40px;"></textarea>
-    </div>
-    <div class="controls">
-      <button id="btnLong" class="buy">🟢 롱(매수) 진입</button>
-      <button id="btnShort" class="primary">🔻 숏(공매도) 진입</button>
-      <button id="btnPass" class="ghost">⏭ 패스(관망)</button>
-    </div>
+<div class="controls">
+  <button id="btnStep">▶ 다음 1분 보기</button>
+  <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
+  <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
+  <button id="btnAnalyzeCurrent" class="live-btn" style="display:none;">🤖 현재 차트 AI 분석</button>
+  <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
+</div>
+<div style="margin-top:10px;">
+  <textarea id="rationale" placeholder="진입 근거 메모 (선택) — 예: VWAP 지지+EMA5/9 골든크로스+StochRSI 반등" style="min-height:40px;"></textarea>
+</div>
+<div class="controls">
+  <button id="btnLong" class="buy">🟢 롱(매수) 진입</button>
+  <button id="btnShort" class="primary">🔻 숏(공매도) 진입</button>
+  <button id="btnPass" class="ghost">⏭ 패스(관망)</button>
+</div>
+```
+
   </div>
 
   <div class="panel" id="resultPanel" style="display:none;">
@@ -242,8 +254,36 @@ function mulberry32(a){
     return ((t^t>>>14)>>>0)/4294967296;
   }
 }
+/* ---------------- KST 시각 유틸 ---------------- */
+// 브라우저 로컬 타임존과 무관하게 "지금"의 KST 연/월/일을 얻는다
+function getKstYMD(date){
+  const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(date || new Date());
+  const y = +parts.find(p=>p.type==='year').value, m = +parts.find(p=>p.type==='month').value, d = +parts.find(p=>p.type==='day').value;
+  return {y,m,d};
+}
+// KST 벽시계 기준 y/m/d h:mi:s → 실제 UTC epoch(ms). KST는 연중 UTC+9 고정(서머타임 없음)이라 단순 뺄셈으로 충분.
+function kstWallToEpoch(y,m,d,h,mi,s){ return Date.UTC(y, m-1, d, (h||0)-9, mi||0, s||0); }
+// 한투 API 형식(YYYYMMDD, HHMMSS 문자열)을 epoch로 변환
+function krDateTimeToEpoch(dateStr, hourStr){
+  const ds = (dateStr && dateStr.length===8) ? dateStr : (()=>{ const t=getKstYMD(); return `${t.y}${String(t.m).padStart(2,'0')}${String(t.d).padStart(2,'0')}`; })();
+  const hs = (hourStr && hourStr.length>=4) ? hourStr.padEnd(6,'0') : '153000';
+  const y=+ds.slice(0,4), mo=+ds.slice(4,6), d=+ds.slice(6,8);
+  const h=+hs.slice(0,2), mi=+hs.slice(2,4), s=+hs.slice(4,6);
+  return kstWallToEpoch(y,mo,d,h,mi,s);
+}
+// Twelve Data "YYYY-MM-DD HH:mm:ss" (요청 시 &timezone=UTC 지정했다는 전제 하에 UTC로 해석)
+function usUtcDatetimeToEpoch(s){
+  if(!s) return null;
+  const [datePart, timePart] = s.split(' ');
+  const [y,mo,d] = datePart.split('-').map(Number);
+  const [h,mi,se] = (timePart||'00:00:00').split(':').map(Number);
+  return Date.UTC(y, mo-1, d, h, mi||0, se||0);
+}
+
 function genSyntheticSession(seed){
   const rnd = mulberry32(seed); const N = 380; const base = 40000 + Math.floor(rnd()*160)*500;
+  const {y,m,d} = getKstYMD();
+  const sessionStartEpoch = kstWallToEpoch(y,m,d,9,0,0); // 합성 데이터는 "오늘" 09:00 KST부터 시작한다고 가정
   let price = base; const candles = []; let regimeLen=0, drift=0;
   for(let i=0;i<N;i++){
     if(regimeLen<=0){ regimeLen = 15 + Math.floor(rnd()*35); drift = (rnd()-0.5)*0.0009; }
@@ -257,13 +297,14 @@ function genSyntheticSession(seed){
     const high = Math.max(open,close) + wick*rnd(); const low = Math.min(open,close) - wick*rnd();
     const baseVol = 8000 + rnd()*6000; const volMultV = volMult*(1+Math.abs(close-open)/price*40);
     const volume = Math.max(500, Math.round(baseVol*volMultV*(0.6+rnd()*0.8)));
-    candles.push({t:i, open, high, low, close: close, o:open, h:high, l:low, c:close, v:volume});
+    candles.push({t:i, open, high, low, close: close, o:open, h:high, l:low, c:close, v:volume, epochMs: sessionStartEpoch + i*60000});
     price = close;
   }
   return {label:`합성 종목 #${seed}`, candles};
 }
 function parseCsv(text){
   const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0); const candles = []; let idx=0;
+  const {y,m,d} = getKstYMD(); const csvStartEpoch = kstWallToEpoch(y,m,d,9,0,0); // 날짜/시간 컬럼은 무시하고 있어 임시로 오늘 09:00부터로 표기 (참고용)
   for(const line of lines){
     const parts = line.split(/[,\t]/).map(s=>s.trim()).filter(s=>s.length>0); const numericTail = parts.slice(-5);
     if(numericTail.some(p=>isNaN(parseFloat(p.replace(/[^\d.\-]/g,''))))) continue;
@@ -271,7 +312,7 @@ function parseCsv(text){
     if(parts.length>=6){ [o,h,l,c,v] = numericTail.map(p=>parseFloat(p.replace(/,/g,''))); } 
     else if(parts.length===5){ [o,h,l,c,v] = parts.map(p=>parseFloat(p.replace(/,/g,''))); } else continue;
     if([o,h,l,c,v].some(x=>isNaN(x))) continue;
-    candles.push({t:idx, open:o, high:h, low:l, close:c, o,h,l,c,v}); idx++;
+    candles.push({t:idx, open:o, high:h, low:l, close:c, o,h,l,c,v, epochMs: csvStartEpoch + idx*60000}); idx++;
   }
   return candles;
 }
@@ -322,7 +363,23 @@ function startRound(newSession){
   render();
 }
 
-function fmtTime(i){ const m = 9*60+i; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+function fmtTime(i){
+  const cd = session && session.candles && session.candles[i];
+  if(cd && cd.epochMs != null){
+    return new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hour12:false}).format(new Date(cd.epochMs));
+  }
+  const m = 9*60+i; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+function fmtDateTime(i){
+  const cd = session && session.candles && session.candles[i];
+  if(cd && cd.epochMs != null){
+    const dt = new Date(cd.epochMs);
+    const datePart = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).format(dt);
+    const timePart = new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}).format(dt);
+    return `${datePart} ${timePart} KST(GMT+9)`;
+  }
+  return fmtTime(i);
+}
 
 function render(){
   const c = session.candles;
@@ -438,21 +495,29 @@ function drawVolumeChart(visible, upto){
   const n = visible.length; const padL=54, padR=10, padT=4, padB=4; const plotW = W-padL-padR, plotH = H-padT-padB;
   const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW;
 
-  let maxV = 0; for(const cd of visible){ if(cd.v > maxV) maxV = cd.v; }
-  if(maxV <= 0) maxV = 1;
-  const yAt = v => padT + (1 - v/maxV) * plotH;
+  // 극단적으로 큰 거래량 캔들 하나 때문에 나머지가 다 눌려 보이지 않도록,
+  // 절대 최댓값이 아니라 95퍼센타일 값을 축의 상한으로 쓴다. 그 이상은 "잘림" 표시로 그린다.
+  const vols = visible.map(cd => cd.v).slice().sort((a,b)=>a-b);
+  const p95Idx = Math.min(vols.length-1, Math.floor(vols.length*0.95));
+  let capV = vols[p95Idx] || vols[vols.length-1] || 1;
+  if(capV <= 0) capV = Math.max(...vols, 1);
+  const yAt = v => padT + (1 - Math.min(v,capV)/capV) * plotH;
 
   ctx.fillStyle='#5B6673'; ctx.font='10px monospace';
-  ctx.fillText(Math.round(maxV).toLocaleString(), 4, padT+9);
+  ctx.fillText(Math.round(capV).toLocaleString()+' (95%)', 4, padT+9);
   ctx.fillText('0', 4, H-padB);
 
   const bw = Math.max(1.5, plotW/n*0.6);
   for(let i=0;i<n;i++){
     const cd = visible[i]; const x = xAt(i);
     const up = cd.close >= cd.open;
-    ctx.fillStyle = up ? 'rgba(229,72,77,0.65)' : 'rgba(59,130,246,0.65)';
+    const clipped = cd.v > capV;
+    ctx.fillStyle = up ? (clipped?'rgba(229,72,77,0.95)':'rgba(229,72,77,0.65)') : (clipped?'rgba(59,130,246,0.95)':'rgba(59,130,246,0.65)');
     const y = yAt(cd.v);
     ctx.fillRect(x-bw/2, y, bw, (H-padB)-y);
+    if(clipped){ // 상한을 넘는 캔들은 꼭대기에 작은 삼각형 표시로 "더 큼"을 알려준다 (정확한 값은 호버 툴팁 참고)
+      ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x-3, padT+5); ctx.lineTo(x+3, padT+5); ctx.closePath(); ctx.fill();
+    }
   }
 }
 
@@ -487,6 +552,49 @@ priceCanvas.addEventListener('click', (e)=>{
     showWhatIf(idx);
   }
 });
+
+/* ---------------- 마우스/터치 오버 시 캔들 날짜·시각(KST) 툴팁 ---------------- */
+const crosshairLine = document.getElementById('crosshairLine');
+const chartTooltip = document.getElementById('chartTooltip');
+function handleChartHover(clientX){
+  if(!lastPriceLayout || !session){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; return; }
+  const rect = priceCanvas.getBoundingClientRect();
+  const xCss = clientX - rect.left;
+  const {padL, plotW, n} = lastPriceLayout;
+  if(xCss < padL - 2 || xCss > padL + plotW + 2){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; return; }
+  const idxFloat = (xCss - padL) / plotW * (n - 1);
+  const idx = Math.max(0, Math.min(n - 1, Math.round(idxFloat)));
+  const cd = session.candles[idx];
+  if(!cd){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; return; }
+
+  crosshairLine.style.display = 'block';
+  crosshairLine.style.left = Math.max(padL, Math.min(padL + plotW, xCss)) + 'px';
+
+  chartTooltip.style.display = 'block';
+  chartTooltip.innerHTML =
+    `<b>${fmtDateTime(idx)}</b><br>` +
+    `시 ${Math.round(cd.open).toLocaleString()} · 고 ${Math.round(cd.high).toLocaleString()}<br>` +
+    `저 ${Math.round(cd.low).toLocaleString()} · 종 ${Math.round(cd.close).toLocaleString()}<br>` +
+    `거래량 ${Math.round(cd.v).toLocaleString()}`;
+  const wrapWidth = rect.width;
+  let tipLeft = xCss + 14;
+  if(tipLeft + 148 > wrapWidth) tipLeft = xCss - 160;
+  chartTooltip.style.left = Math.max(4, tipLeft) + 'px';
+  chartTooltip.style.top = '6px';
+}
+priceCanvas.addEventListener('mousemove', (e)=> handleChartHover(e.clientX));
+priceCanvas.addEventListener('mouseleave', ()=>{ crosshairLine.style.display='none'; chartTooltip.style.display='none'; });
+let priceTouchStartX = null;
+priceCanvas.addEventListener('touchstart', (e)=>{
+  if(e.touches && e.touches[0]) priceTouchStartX = e.touches[0].clientX;
+}, {passive:true});
+priceCanvas.addEventListener('touchmove', (e)=>{
+  if(!e.touches || !e.touches[0]) return;
+  const dx = Math.abs(e.touches[0].clientX - (priceTouchStartX ?? e.touches[0].clientX));
+  handleChartHover(e.touches[0].clientX);
+  if(dx > 6) e.preventDefault(); // 일정 이상 드래그(스크럽)할 때만 페이지 스크롤을 막아, 짧은 탭(진입/되감기)은 그대로 동작하게 함
+}, {passive:false});
+priceCanvas.addEventListener('touchend', ()=>{ crosshairLine.style.display='none'; chartTooltip.style.display='none'; });
 
 document.getElementById('btnRewindReset').addEventListener('click', ()=>{
   if(direction || dataMode==='real_live') return;
@@ -963,7 +1071,8 @@ async function loadDomestic(code, tf) {
             if(!(o > 0) || !(h > 0) || !(l > 0) || !(close > 0)) continue;
             if(!(v > 0)) continue;
 
-            candles.push({t: candles.length, open: o, high: h, low: l, close: close, o, h, l, c: close, v: isNaN(v) ? 0 : v});
+            candles.push({t: candles.length, open: o, high: h, low: l, close: close, o, h, l, c: close, v: isNaN(v) ? 0 : v,
+                epochMs: krDateTimeToEpoch(c.stck_bsop_date, c.stck_cntg_hour)});
         }
 
         if(candles.length < 2) {
@@ -1012,7 +1121,8 @@ async function loadUs(symbol) {
         for(const c of chronological){
             const o = parseFloat(c.open), h = parseFloat(c.high), l = parseFloat(c.low), close = parseFloat(c.close), v = parseFloat(c.volume);
             if(!(o > 0) || !(h > 0) || !(l > 0) || !(close > 0)) continue; // 이상치 방어 (국내 데이터와 동일 기준)
-            candles.push({t: candles.length, open:o, high:h, low:l, close, o, h, l, c:close, v: isNaN(v) ? 0 : v});
+            candles.push({t: candles.length, open:o, high:h, low:l, close, o, h, l, c:close, v: isNaN(v) ? 0 : v,
+                epochMs: usUtcDatetimeToEpoch(c.datetime)});
         }
         if(candles.length < 2){ alert("유효한 캔들이 거의 없습니다."); return; }
 
@@ -1236,5 +1346,6 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   }
 });
 </script>
+
 </body>
 </html>
