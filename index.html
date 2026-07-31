@@ -102,7 +102,6 @@
       <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
     </div>
 
-```
 <div class="srcbar">
   <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
   <button class="ghost" onclick="document.getElementById('chartImageInput').click()">📸 스크린샷 선택</button>
@@ -119,7 +118,6 @@
 <div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
   분석 결과가 여기에 표시됩니다.
 </div>
-```
 
   </div>
 
@@ -144,7 +142,6 @@
     <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
     <div id="whatIfBox" style="display:none; margin-top:10px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px;"></div>
 
-```
 <h2 style="margin:16px 0 8px;">Stochastic RSI (14,14,3,3)</h2>
 <canvas id="stochCanvas" height="120"></canvas>
 
@@ -163,7 +160,6 @@
   <button id="btnShort" class="primary">🔻 숏(공매도) 진입</button>
   <button id="btnPass" class="ghost">⏭ 패스(관망)</button>
 </div>
-```
 
   </div>
 
@@ -424,8 +420,9 @@ function render(){
 }
 
 function drawPriceChart(visible, upto){
-  const ctx = priceCanvas.getContext('2d'); const W = priceCanvas.clientWidth || 1000; const H = 360;
-  priceCanvas.width = W*2; priceCanvas.height=H*2; ctx.scale(2,2); ctx.clearRect(0,0,W,H);
+  const ctx = priceCanvas.getContext('2d'); const W = priceCanvas.clientWidth || 1000;
+  const H = 360; const axisH = 24; const Htotal = H + axisH; // axisH: 하단 시간축(시각/날짜) 표시용 여백
+  priceCanvas.width = W*2; priceCanvas.height=Htotal*2; ctx.scale(2,2); ctx.clearRect(0,0,W,Htotal);
   const n = visible.length; const padL=54, padR=10, padT=10, padB=10; const plotW = W-padL-padR, plotH = H-padT-padB;
   lastPriceLayout = {padL, plotW, n};
   let lo=Infinity, hi=-Infinity; for(const cd of visible){ lo=Math.min(lo,cd.low); hi=Math.max(hi,cd.high); }
@@ -471,6 +468,48 @@ function drawPriceChart(visible, upto){
     ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,H-padB); ctx.stroke(); ctx.restore();
     ctx.fillStyle='#DCE4EC'; ctx.font='10px sans-serif'; ctx.fillText('복기', x-9, padT+11);
   }
+
+  /* ---------------- 하단 시간축 (KST 시:분 + 날짜/월 바뀔 때 강조) ---------------- */
+  const axisTop = H;
+  ctx.strokeStyle = '#1C2530'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
+
+  const timeFmt = new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hour12:false});
+  const dateKeyFmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'});
+  const monthFmt = new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul', month:'long'});
+
+  const targetTicks = Math.max(2, Math.floor(plotW/90)); // 약 90px당 눈금 하나
+  const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
+  ctx.textAlign = 'center';
+  let lastDateKey = null;
+  for(let i=0; i<n; i+=tickStep){
+    const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
+    const dt = new Date(cd.epochMs);
+    const dateKey = dateKeyFmt.format(dt);
+    const x = xAt(i);
+    ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
+    if(dateKey !== lastDateKey && lastDateKey !== null){
+      // 날짜(일)가 바뀌는 지점: 시각 대신 "월" 라벨을 굵게 강조 (TradingView 스타일)
+      ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
+      ctx.fillText(monthFmt.format(dt), x, axisTop+16);
+    } else {
+      ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
+      ctx.fillText(timeFmt.format(dt), x, axisTop+16);
+    }
+    lastDateKey = dateKey;
+  }
+  // 맨 오른쪽(최신 캔들) 시각은 항상 별도로 강조 표시 — 눈금 간격상 잘리기 쉬운 위치라 겹치지 않을 때만 그림
+  if(n>0){
+    const lastCd = visible[n-1];
+    if(lastCd && lastCd.epochMs!=null){
+      const lastTickIdx = Math.floor((n-1)/tickStep)*tickStep;
+      const lastTickX = xAt(lastTickIdx);
+      if((W-padR) - lastTickX > 40){
+        ctx.fillStyle = '#F5A623'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
+        ctx.fillText(timeFmt.format(new Date(lastCd.epochMs)), W-padR, axisTop+16);
+      }
+    }
+  }
+  ctx.textAlign = 'left';
 }
 
 function drawStochChart(upto){
