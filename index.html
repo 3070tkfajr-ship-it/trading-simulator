@@ -511,6 +511,16 @@
 
   </div>
 
+  <div class="panel" id="ruleAnalysisPanel">
+    <h2>⚡ 즉석 규칙 기반 분석 <span style="font-size:11px; color:var(--muted); font-weight:400;">(AI 미사용 · 무료 · 즉시)</span></h2>
+    <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+      지금 화면에 로드된 차트의 VWAP·EMA·StochRSI·거래량을 그대로 규칙으로 채점해서, 롱/숏 기대값을 즉시 비교해줘요.<br>
+      AI 호출 없이 자바스크립트로 바로 계산되니 몇 초씩 기다릴 필요 없고 비용도 안 들어요. (단, 이미지 기반 Price Action 판독은 못해요)
+    </div>
+    <button id="btnRuleAnalysis" class="live-btn">⚡ 지금 차트 규칙 기반 분석</button>
+    <div id="ruleAnalysisResult" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--amber); line-height:1.7; font-size:13px;"></div>
+  </div>
+
   <div class="panel">
     <div class="chartTitle">
       <h2 style="margin:0;"><span id="chartSymbolLabel" style="color:var(--amber);"></span>가격 · VWAP · EMA(5/9/20/200)</h2>
@@ -1035,12 +1045,10 @@ function dashboardTodayKey(date){
           } else { vwapScore = 3; }
         }
         let emaScore = 0;
-        if(e5 != null && e9 != null && e20 != null && e200 != null){
-          if(e5 > e9) emaScore += 10;
-          if(e9 > e20) emaScore += 10;
-          if(entryPrice > e20) emaScore += 10;
-          if(entryPrice > e200) emaScore += 10;
-        }
+        if(e5 != null && e9 != null && e5 > e9) emaScore += 10;
+        if(e9 != null && e20 != null && e9 > e20) emaScore += 10;
+        if(e20 != null && entryPrice > e20) emaScore += 10;
+        if(e200 != null && entryPrice > e200) emaScore += 10;
         let stochScore = 6;
         if(kNow != null){
           stochScore = kNow < 20 ? 11 : (kNow > 80 ? 3 : 7);
@@ -1704,6 +1712,123 @@ function renderOneWayRiskBar(visible, revealEnd){
       guideEl.style.display = 'none';
     }
   }
+}
+
+/* ---------------- ⚡ 즉석 규칙 기반 분석 (AI 미사용) — 롱/숏 양방향 아지즈 약식 채점 ---------------- */
+function scoreDirection(idx, dir){
+  const price = session.candles[idx].close;
+  const vwapNow = indicators.vwap[idx];
+  const e5 = indicators.ema5[idx], e9 = indicators.ema9[idx], e20 = indicators.ema20[idx], e200 = indicators.ema200[idx];
+  const kNow = (indicators.stoch && indicators.stoch.K) ? indicators.stoch.K[idx] : null;
+  const recentVols = session.candles.slice(Math.max(0, idx - 20), idx).map(c => c.v).filter(v => v > 0);
+  const avgVol = recentVols.length ? recentVols.reduce((a, b) => a + b, 0) / recentVols.length : null;
+  const curVol = session.candles[idx].v;
+
+  let vwapScore = 0;
+  if(vwapNow != null){
+    const priceAbove = price >= vwapNow;
+    const favorable = dir === 'long' ? priceAbove : !priceAbove;
+    if(favorable){
+      const distPct = Math.abs(price - vwapNow) / vwapNow * 100;
+      vwapScore = distPct <= 1.5 ? 30 : (distPct <= 3 ? 20 : 10);
+    } else vwapScore = 3;
+  }
+  let emaScore = 0;
+  if(dir === 'long'){
+    if(e5 != null && e9 != null && e5 > e9) emaScore += 10;
+    if(e9 != null && e20 != null && e9 > e20) emaScore += 10;
+    if(e20 != null && price > e20) emaScore += 10;
+    if(e200 != null && price > e200) emaScore += 10;
+  } else {
+    if(e5 != null && e9 != null && e5 < e9) emaScore += 10;
+    if(e9 != null && e20 != null && e9 < e20) emaScore += 10;
+    if(e20 != null && price < e20) emaScore += 10;
+    if(e200 != null && price < e200) emaScore += 10;
+  }
+  let stochScore = 6;
+  if(kNow != null){
+    stochScore = dir === 'long'
+      ? (kNow < 20 ? 11 : (kNow > 80 ? 3 : 7))
+      : (kNow > 80 ? 11 : (kNow < 20 ? 3 : 7));
+  }
+  let volScore = 0;
+  if(avgVol && curVol){
+    const ratio = curVol / avgVol;
+    volScore = ratio >= 1.5 ? 8 : (ratio >= 1.0 ? 5 : 2);
+  }
+  return { total: vwapScore + emaScore + stochScore + volScore, vwapScore, emaScore, stochScore, volScore };
+}
+
+function computeInstantAnalysis(){
+  if(typeof session === 'undefined' || !session || !session.candles || !session.candles.length) return null;
+  if(typeof indicators === 'undefined' || !indicators) return null;
+  const idx = direction ? Math.min(entryIdx + 30, session.candles.length - 1) : cutoff;
+  if(idx == null || idx < 20) return null;
+  const price = session.candles[idx].close;
+
+  const longScore = scoreDirection(idx, 'long');
+  const shortScore = scoreDirection(idx, 'short');
+  const risk = computeOneWayRisk(session.candles.slice(0, idx + 1), idx);
+
+  let verdict, verdictReason;
+  const diff = longScore.total - shortScore.total;
+  if(Math.max(longScore.total, shortScore.total) < 40){
+    verdict = '관망'; verdictReason = '롱/숏 둘 다 근거가 약해요 — 무리해서 들어갈 자리는 아니에요.';
+  } else if(Math.abs(diff) < 10){
+    verdict = '관망'; verdictReason = `롱 ${longScore.total}점 vs 숏 ${shortScore.total}점 — 팽팽해서 방향성이 불분명해요.`;
+  } else if(diff > 0){
+    verdict = '롱'; verdictReason = `롱 ${longScore.total}점 vs 숏 ${shortScore.total}점 — 롱 쪽 근거가 더 우세해요.`;
+  } else {
+    verdict = '숏'; verdictReason = `숏 ${shortScore.total}점 vs 롱 ${longScore.total}점 — 숏 쪽 근거가 더 우세해요.`;
+  }
+
+  let sl = null, tp = null, slBasis = '';
+  if(verdict !== '관망'){
+    const vwapNow = indicators.vwap[idx], e20 = indicators.ema20[idx];
+    if(verdict === '롱'){
+      const cands = [{v: vwapNow, l: 'VWAP'}, {v: e20, l: '20EMA'}].filter(c => c.v != null && c.v < price);
+      if(cands.length){ cands.sort((a, b) => b.v - a.v); sl = cands[0].v; slBasis = cands[0].l + ' 기준'; }
+      else { sl = price * 0.985; slBasis = '진입가 -1.5% (구조적 기준 부족)'; }
+      tp = price + (price - sl) * 2;
+    } else {
+      const cands = [{v: vwapNow, l: 'VWAP'}, {v: e20, l: '20EMA'}].filter(c => c.v != null && c.v > price);
+      if(cands.length){ cands.sort((a, b) => a.v - b.v); sl = cands[0].v; slBasis = cands[0].l + ' 기준'; }
+      else { sl = price * 1.015; slBasis = '진입가 +1.5% (구조적 기준 부족)'; }
+      tp = price - (sl - price) * 2;
+    }
+  }
+
+  return { idx, price, longScore, shortScore, verdict, verdictReason, sl, tp, slBasis, risk };
+}
+
+function renderRuleAnalysis(){
+  const box = document.getElementById('ruleAnalysisResult');
+  if(!box) return;
+  const r = computeInstantAnalysis();
+  box.style.display = 'block';
+  if(!r){
+    box.innerHTML = '분석할 차트 데이터가 부족합니다. 먼저 차트를 불러오거나(20개 이상 캔들 필요), 조금 더 진행된 뒤 다시 눌러주세요.';
+    return;
+  }
+  const GREEN = 'color:#3ECF8E', REDC = 'color:#E5484D', AMBER = 'color:#F5A623';
+  let html = '';
+  html += `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">기준 시각: ${fmtDateTime(r.idx)} · 가격 ${Math.round(r.price).toLocaleString()}</div>`;
+  html += `<b>1. VWAP 분석 (최대 30점)</b><br>롱 ${r.longScore.vwapScore}/30 · 숏 ${r.shortScore.vwapScore}/30<br><br>`;
+  html += `<b>2. EMA 정렬 (최대 40점)</b><br>롱 ${r.longScore.emaScore}/40 · 숏 ${r.shortScore.emaScore}/40<br><br>`;
+  html += `<b>3. Relative Volume (최대 8점)</b><br>${r.longScore.volScore}/8<br><br>`;
+  html += `<b>4. Stochastic RSI (최대 13점)</b><br>롱 ${r.longScore.stochScore}/13 · 숏 ${r.shortScore.stochScore}/13<br><br>`;
+  html += `<b>💡 롱 기대값:</b> <span style="${GREEN}">${r.longScore.total}/96점</span> &nbsp;&nbsp; <b>💡 숏 기대값:</b> <span style="${REDC}">${r.shortScore.total}/96점</span><br><br>`;
+  const vColor = r.verdict === '롱' ? GREEN : (r.verdict === '숏' ? REDC : AMBER);
+  html += `<b>🔥 최종 판단: <span style="${vColor}">${r.verdict}</span></b><br>${r.verdictReason}`;
+  if(r.sl != null){
+    html += `<br>손절: <span style="${REDC}">약 ${Math.round(r.sl).toLocaleString()}</span> (${r.slBasis}) · `
+      + `익절: <span style="${GREEN}">약 ${Math.round(r.tp).toLocaleString()}</span> (2:1 시작점, 유동적으로)`;
+  }
+  if(r.risk && r.risk.stars >= 4){
+    html += `<br><br><span style="${AMBER}">🌊 지금 원웨이장 위험도 ${'★'.repeat(r.risk.stars)}${'☆'.repeat(5-r.risk.stars)} — 역매매 금지, 순응 매매도 소량·단기로만.</span>`;
+  }
+  html += `<br><br><span style="color:var(--muted); font-size:11px;">※ 이 분석은 이미지 기반 Price Action(캔들 구조)은 판독하지 못해요. AI 스크린샷 분석과 함께 참고하는 걸 권장해요.</span>`;
+  box.innerHTML = html;
 }
 
 function render(){
@@ -2827,6 +2952,7 @@ async function requestAiAnalysis(provider) {
 }
 
 btnAnalyzeGemini.addEventListener('click', () => requestAiAnalysis('gemini'));
+document.getElementById('btnRuleAnalysis').addEventListener('click', renderRuleAnalysis);
 
 // ⏱️ 장초반 10분 분석 제한 배너 — 실시간 갱신
 function updateOpeningGuardBanner(){
