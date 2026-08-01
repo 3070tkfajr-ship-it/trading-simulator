@@ -211,6 +211,8 @@
   .cal-day{ position:relative; min-height:52px; border-radius:6px; border:1px solid var(--line); background:var(--panel-2);
     padding:4px 5px; font-family:var(--mono); display:flex; flex-direction:column; gap:2px; }
   .cal-day.blank{visibility:hidden;}
+  .cal-day.weekend{opacity:.45;}
+  .cal-day.weekend .d{color:var(--muted);}
   .cal-day.today{border-color:var(--cyan);}
   .cal-day.win{background:#0E2A20; border-color:#1C4433;}
   .cal-day.loss{background:#2A1416; border-color:#4A2129;}
@@ -1317,6 +1319,7 @@ function dashboardTodayKey(date){
   const fmtWon = n => (n >= 0 ? '+' : '') + Math.round(n).toLocaleString('ko-KR') + '원';
   const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
   const firstWeekday = (y, m) => new Date(y, m - 1, 1).getDay(); // 0=일 ... 6=토
+  const weekdayOf = (y, m, d) => new Date(y, m - 1, d).getDay();
 
   function loadDayTrades(y, m, d){
     try { return JSON.parse(localStorage.getItem(`trades_${y}-${pad2(m)}-${pad2(d)}`) || '[]'); } catch(e){ return []; }
@@ -1338,14 +1341,17 @@ function dashboardTodayKey(date){
     const nDays = daysInMonth(y, m);
     const lead = firstWeekday(y, m);
     let monthPnl = 0, monthCount = 0, monthWins = 0;
-    const dayCells = []; // {day, pnl, count} | null(blank)
+    const dayCells = []; // {day, pnl, count, isWeekend} | null(blank)
     for(let i = 0; i < lead; i++) dayCells.push(null);
     for(let d = 1; d <= nDays; d++){
-      const trades = loadDayTrades(y, m, d);
+      const wd = weekdayOf(y, m, d);
+      const isWeekend = (wd === 0 || wd === 6);
+      // 주말은 달력 칸 자체는 정상 표시하되, 매매 데이터는 절대 반영하지 않음(거래일 아니므로)
+      const trades = isWeekend ? [] : loadDayTrades(y, m, d);
       const pnl = trades.reduce((s, t) => s + t.pnl, 0);
       const wins = trades.filter(t => t.pnl >= 0).length;
       if(trades.length){ monthPnl += pnl; monthCount += trades.length; monthWins += wins; }
-      dayCells.push({ day: d, pnl, count: trades.length, wins });
+      dayCells.push({ day: d, pnl, count: trades.length, wins, isWeekend });
     }
 
     const summaryEl = document.getElementById('calMonthSummary');
@@ -1368,6 +1374,7 @@ function dashboardTodayKey(date){
         if(cell === null){ el.className = 'cal-day blank'; gridEl.appendChild(el); return; }
         const isToday = (y===todayParts[0] && m===todayParts[1] && cell.day===todayParts[2]);
         const cls = ['cal-day'];
+        if(cell.isWeekend) cls.push('weekend');
         if(cell.count > 0) cls.push(cell.pnl >= 0 ? 'win' : 'loss');
         if(isToday) cls.push('today');
         el.className = cls.join(' ');
@@ -1377,7 +1384,7 @@ function dashboardTodayKey(date){
       });
     }
 
-    // 주별 순손익 (달력에 보이는 행 단위, 일~토 기준)
+    // 주별 순손익 (달력에 보이는 행 단위, 일~토 기준 — 주말 데이터는 항상 0이므로 자연히 제외됨)
     const weeklyEl = document.getElementById('calWeekly');
     if(weeklyEl){
       weeklyEl.innerHTML = '';
