@@ -1764,6 +1764,12 @@ function fmtTime(i){
   }
   const m = 9*60+i; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 }
+// 가격 표시용 포맷터 — 1,000 미만(주로 미국주식/ETF 등)은 소수점 2자리까지, 그 이상(원화 주식 등)은 정수로
+function fmtPrice(p){
+  if(p == null || isNaN(p)) return '';
+  const decimals = Math.abs(p) < 1000 ? 2 : 0;
+  return p.toLocaleString(undefined, {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+}
 function fmtDateTime(i){
   const cd = session && session.candles && session.candles[i];
   if(cd && cd.epochMs != null){
@@ -1975,9 +1981,9 @@ function render(){
   const chg = visible.length > 1 ? ((last.close - visible[0].open)/visible[0].open*100) : 0;
   tape.innerHTML = `<span><span class="dot" style="background:var(--amber)"></span>라운드 ${roundNo}</span>
     <span>${dataMode==='real_live' ? '실시간 연동 중' : fmtTime(revealEnd)}</span>
-    <span>현재가 <b>${Math.round(last.close).toLocaleString()}</b></span>
+    <span>현재가 <b>${fmtPrice(last.close)}</b></span>
     <span class="${chg>=0?'up':'down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>
-    <span>VWAP <b>${Math.round(indicators.vwap[revealEnd]).toLocaleString()}</b></span>`;
+    <span>VWAP <b>${fmtPrice(indicators.vwap[revealEnd])}</b></span>`;
 
   const remaining = c.length - cutoff;
   closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction && !viewAllMode ? 'inline' : 'none';
@@ -2076,7 +2082,7 @@ function drawLastPriceLine(ctx, visible, xAt, yAt, W, padL, padR){
   ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
   ctx.restore();
 
-  const label = Math.round(last.close).toLocaleString();
+  const label = fmtPrice(last.close);
   ctx.font = 'bold 11px monospace';
   const textW = ctx.measureText(label).width;
   const boxW = textW + 12, boxH = 16;
@@ -2106,11 +2112,11 @@ function drawHighLowMarkers(ctx, visible, xAt, yAt, W){
 
   ctx.beginPath(); ctx.arc(hiX, hiY, 2.2, 0, Math.PI * 2); ctx.fill();
   ctx.textAlign = hiX > W * 0.75 ? 'right' : 'left';
-  ctx.fillText(Math.round(hiCd.high).toLocaleString(), hiX + (ctx.textAlign === 'right' ? -7 : 7), hiY - 6);
+  ctx.fillText(fmtPrice(hiCd.high), hiX + (ctx.textAlign === 'right' ? -7 : 7), hiY - 6);
 
   ctx.beginPath(); ctx.arc(loX, loY, 2.2, 0, Math.PI * 2); ctx.fill();
   ctx.textAlign = loX > W * 0.75 ? 'right' : 'left';
-  ctx.fillText(Math.round(loCd.low).toLocaleString(), loX + (ctx.textAlign === 'right' ? -7 : 7), loY + 14);
+  ctx.fillText(fmtPrice(loCd.low), loX + (ctx.textAlign === 'right' ? -7 : 7), loY + 14);
 
   ctx.textAlign = 'left';
 }
@@ -2129,7 +2135,7 @@ function drawPriceChart(visible, upto){
   const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = p => padT + (1-(p-lo)/(hi-lo))*plotH;
 
   ctx.strokeStyle='#1C2530'; ctx.fillStyle='#AEB8C4'; ctx.font='11px monospace';
-  for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(Math.round(hi - g*(hi-lo)/4).toLocaleString(), 4, yy+3); }
+  for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(fmtPrice(hi - g*(hi-lo)/4), 4, yy+3); }
 
   const cw = Math.max(1.5, plotW/n*0.6);
   for(let i=0;i<n;i++){
@@ -2194,7 +2200,7 @@ function drawRecentChart(candles, revealEnd){
   const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = p => padT + (1-(p-lo)/(hi-lo))*plotH;
 
   ctx.strokeStyle='#1C2530'; ctx.fillStyle='#AEB8C4'; ctx.font='11px monospace';
-  for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(Math.round(hi - g*(hi-lo)/4).toLocaleString(), 4, yy+3); }
+  for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(fmtPrice(hi - g*(hi-lo)/4), 4, yy+3); }
 
   const cw = Math.max(2, plotW/n*0.6);
   for(let i=0;i<n;i++){
@@ -2324,8 +2330,8 @@ function renderTooltip(idx, xCss, pinned){
   chartTooltip.style.pointerEvents = pinned ? 'auto' : 'none';
   chartTooltip.innerHTML =
     `<b>${pinned ? '📌 ' : ''}${fmtDateTime(idx)}</b>${pinned ? ' <span id="tooltipUnpinBtn" style="cursor:pointer; color:var(--muted); float:right; margin-left:8px;">✕</span>' : ''}<br>` +
-    `시 ${Math.round(cd.open).toLocaleString()} · 고 ${Math.round(cd.high).toLocaleString()}<br>` +
-    `저 ${Math.round(cd.low).toLocaleString()} · 종 ${Math.round(cd.close).toLocaleString()}<br>` +
+    `시 ${fmtPrice(cd.open)} · 고 ${fmtPrice(cd.high)}<br>` +
+    `저 ${fmtPrice(cd.low)} · 종 ${fmtPrice(cd.close)}<br>` +
     `거래량 ${Math.round(cd.v).toLocaleString()}`;
   const wrapWidth = rect.width;
   let tipLeft = xCss + 14;
@@ -2399,8 +2405,8 @@ function renderRecentTooltip(absIdx, xCss, pinned){
   tipEl.style.pointerEvents = pinned ? 'auto' : 'none';
   tipEl.innerHTML =
     `<b>${pinned ? '📌 ' : ''}${fmtDateTime(absIdx)}</b>${pinned ? ' <span id="recentTooltipUnpinBtn" style="cursor:pointer; color:var(--muted); float:right; margin-left:8px;">✕</span>' : ''}<br>` +
-    `시 ${Math.round(cd.open).toLocaleString()} · 고 ${Math.round(cd.high).toLocaleString()}<br>` +
-    `저 ${Math.round(cd.low).toLocaleString()} · 종 ${Math.round(cd.close).toLocaleString()}<br>` +
+    `시 ${fmtPrice(cd.open)} · 고 ${fmtPrice(cd.high)}<br>` +
+    `저 ${fmtPrice(cd.low)} · 종 ${fmtPrice(cd.close)}<br>` +
     `거래량 ${Math.round(cd.v).toLocaleString()}`;
   const wrapWidth = rect.width;
   let tipLeft = xCss + 14;
@@ -2848,7 +2854,7 @@ function showResult(){
     ${scoreHtml}
     <div class="snapshot">${bestHtml}</div>
     <div class="resultGrid">
-      <div class="stat"><div class="k">진입가</div><div class="v">${Math.round(entry.close).toLocaleString()}</div></div>
+      <div class="stat"><div class="k">진입가</div><div class="v">${fmtPrice(entry.close)}</div></div>
       <div class="stat"><div class="k">5분 후 손익</div><div class="v ${m5.pct>=0?'up':'down'}">${m5.pct>=0?'+':''}${m5.pct.toFixed(2)}%</div></div>
       <div class="stat"><div class="k">10분 후 손익</div><div class="v ${m10.pct>=0?'up':'down'}">${m10.pct>=0?'+':''}${m10.pct.toFixed(2)}%</div></div>
       <div class="stat"><div class="k">20분 후 손익</div><div class="v ${m20.pct>=0?'up':'down'}">${m20.pct>=0?'+':''}${m20.pct.toFixed(2)}%</div></div>
@@ -2865,7 +2871,7 @@ function showResult(){
 
   lastSummary = `[리플레이 트레이닝 결과 — 라운드 ${roundNo}]
 ${scoreText}데이터: ${dataMode==='real'?'실데이터':'합성(연습용)'} / ${session.label}
-진입시각: ${fmtTime(entryIdx)} / 방향: ${dirLabel} / 진입가: ${Math.round(entry.close).toLocaleString()}
+진입시각: ${fmtTime(entryIdx)} / 방향: ${dirLabel} / 진입가: ${fmtPrice(entry.close)}
 진입 근거 메모: ${rationale || '(없음)'}
 --- 진입 시점 지표 ---
 VWAP 대비: ${vsVwap==null?'—':(vsVwap>=0?'+':'')+vsVwap.toFixed(2)+'%'}
