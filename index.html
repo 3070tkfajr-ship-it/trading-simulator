@@ -105,6 +105,14 @@
     text-align:center; padding:10px 12px; border-radius:8px; margin-bottom:12px; }
   #revengeBanner.show{display:block;}
 
+  /* ---- 🔒 손절 미준수 잠금 배너 (코드 재입력 필요) ---- */
+  #slLockBanner{ background:#241417; border:1px solid #7A2836; border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  #slLockText{ color:#F0A6AC; font-size:12.5px; font-weight:700; text-align:center; margin-bottom:9px; }
+  #slLockUnlockRow{ display:flex; gap:8px; max-width:360px; margin:0 auto; }
+  #slLockUnlockRow input{ flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; color:var(--text); font-family:var(--mono); font-size:12px; padding:7px 9px; }
+  #slLockUnlockRow button{ padding:7px 12px; font-size:11.5px; background:var(--red); border-color:var(--red); color:#fff; font-weight:700; }
+  #slLockError{ color:var(--red); font-size:11px; text-align:center; margin-top:6px; min-height:1.4em; }
+
   /* ---- 🚫 일일 손실 한도 하드락 ---- */
   #lossLimitOverlay{ position:fixed; inset:0; z-index:210; background:rgba(6,9,13,.92); display:flex; align-items:center; justify-content:center; padding:20px; }
   #lossLimitOverlay.hidden{display:none;}
@@ -468,6 +476,14 @@
   </div>
 
   <div id="revengeBanner">⚠️ 오늘 역매매 금지 모드 — 연속 손절 2회로 발동 (내일 자동 해제)</div>
+  <div id="slLockBanner" style="display:none;">
+    <div id="slLockText"></div>
+    <div id="slLockUnlockRow">
+      <input id="slLockCodeInput" type="number" placeholder="발급받은 코드(1~999) 입력">
+      <button id="slLockUnlockBtn">🔓 잠금 해제</button>
+    </div>
+    <div id="slLockError"></div>
+  </div>
 
   <div class="panel" id="dataSourcePanel">
     <h2>데이터 소스 설정</h2>
@@ -1010,7 +1026,41 @@ function dashboardTodayKey(date){
     /* ---- 🟢 진입 / 🔴 청산 플로우 ---- */
     // 진입 시점에 화면에 그 종목의 실시간 차트가 떠 있으면(같은 심볼 + real_live 모드) VWAP/EMA/StochRSI/거래량으로
     // 아지즈 프롬프트 배점 로직을 약식 규칙으로 즉석 계산. 없으면 점수는 생략하고 SL/TP 제안만 한다.
+    const AI_SUMMARY_FRESH_MS = 20 * 60 * 1000; // 20분 이내 분석만 재사용
+    function tryGetFreshAiSummary(symbolInput){
+      const ai = window.lastAiAnalysis;
+      if(!ai || !ai.html) return null;
+      if(Date.now() - ai.ts > AI_SUMMARY_FRESH_MS) return null;
+      const normalized = symbolInput.trim().toUpperCase();
+      const matches = (ai.symbolKeys || []).some(k => k === normalized || normalized.includes(k) || k.includes(normalized));
+      if(!matches) return null;
+
+      // "🔥 최종 판단" 섹션 위주로 요약 추출 (없으면 앞부분만)
+      let section;
+      const markerIdx = ai.html.indexOf('🔥 최종 판단');
+      if(markerIdx !== -1){
+        section = ai.html.slice(markerIdx);
+        if(section.length > 600) section = section.slice(0, 600) + '…';
+      } else {
+        section = ai.html.slice(0, 400) + (ai.html.length > 400 ? '…' : '');
+      }
+
+      let sl = null;
+      const slMatch = section.match(/손절[^\d]{0,15}([\d][\d,]*)/);
+      if(slMatch){
+        const n = parseFloat(slMatch[1].replace(/,/g, ''));
+        if(!isNaN(n) && n > 0) sl = n;
+      }
+
+      const minutesAgo = Math.max(0, Math.round((Date.now() - ai.ts) / 60000));
+      const html = `<b>🤖 방금 실행한 ${ai.model} 분석 요약</b> <span style="color:var(--muted); font-size:10px;">(${minutesAgo}분 전 · 규칙 기반 재계산 아님)</span><br>` + section;
+      return { html, sl };
+    }
+
     function computeQuickAzizFeedback(symbolInput, entryPrice){
+      const aiSummary = tryGetFreshAiSummary(symbolInput);
+      if(aiSummary) return aiSummary;
+
       const normalized = symbolInput.trim().toUpperCase();
       const isLiveMatch = (typeof dataMode !== 'undefined' && dataMode === 'real_live'
         && typeof liveSymbolKeys !== 'undefined' && liveSymbolKeys.length
@@ -1063,7 +1113,7 @@ function dashboardTodayKey(date){
         }
         const total = vwapScore + emaScore + stochScore + volScore;
         const tone = total >= 65 ? '근거 탄탄한' : (total >= 40 ? '보통 수준의' : '근거 약한');
-        scoreHtml = `<b>⚡ 약식 자동 채점 (참고용, ${total}/96점)</b><br>` +
+        scoreHtml = `<b>⚡ 약식 자동 채점 (참고용, ${total}/96점)</b> <span style="color:var(--muted); font-size:10px;">(규칙 기반, AI 분석 아님)</span><br>` +
           `${tone} 진입이에요 — VWAP ${vwapScore}/30 · EMA정렬 ${emaScore}/40 · StochRSI ${stochScore}/13 · 거래량 ${volScore}/8<br><br>`;
       }
 
@@ -1080,18 +1130,21 @@ function dashboardTodayKey(date){
       return { html, sl };
     }
 
-    /* ---- 🔒 손절 미준수 자가체크 페널티 (1시간 쿨다운) ---- */
-    const SL_LOCK_KEY = 'slViolationLockUntil';
-    const SL_LOCK_CODE_KEY = 'slViolationCode';
-    function getSlLockRemainMs(){
-      try {
-        const until = parseInt(localStorage.getItem(SL_LOCK_KEY) || '0', 10);
-        return Math.max(0, until - Date.now());
-      } catch(e){ return 0; }
+    /* ---- 🔒 손절 미준수 자가체크 페널티 — 1시간 최소 대기 + 코드 재입력으로만 해제 ---- */
+    const SL_LOCK_KEY = 'slViolationLockUntil';       // 이 시각이 지나야 해제 "시도"가 가능
+    const SL_LOCK_CODE_KEY = 'slViolationCode';       // 발급된 코드 (존재 자체가 "잠긴 상태"를 의미)
+    const SL_LOCKED_BUTTON_IDS = ['tlEntryBtn','tlExitBtn','btnAnalyzeGemini','btnAnalyzeClaude','btnAnalyzeCurrentGemini','btnAnalyzeCurrentClaude','btnRuleAnalysis'];
+
+    function isSlLocked(){
+      try { return !!localStorage.getItem(SL_LOCK_CODE_KEY); } catch(e){ return false; }
     }
+    function getSlUnlockEta(){
+      try { return parseInt(localStorage.getItem(SL_LOCK_KEY) || '0', 10); } catch(e){ return 0; }
+    }
+    function getSlLockRemainMs(){ return Math.max(0, getSlUnlockEta() - Date.now()); } // 남은 "최소 대기" 시간(코드 입력 자체를 못 하는 구간)
     function setSlViolationLock(){
       const code = Math.floor(Math.random() * 999) + 1;
-      const until = Date.now() + 60 * 60 * 1000;
+      const until = Date.now() + 60 * 60 * 1000; // 최소 1시간은 코드를 넣어도 안 풀림
       try { localStorage.setItem(SL_LOCK_KEY, String(until)); localStorage.setItem(SL_LOCK_CODE_KEY, String(code)); } catch(e){}
       return { code, until };
     }
@@ -1101,20 +1154,58 @@ function dashboardTodayKey(date){
       return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
     }
     function applySlLockUI(){
-      const entryBtn = document.getElementById('tlEntryBtn');
-      const exitBtn = document.getElementById('tlExitBtn');
+      const locked = isSlLocked();
       const remain = getSlLockRemainMs();
-      const locked = remain > 0;
-      const title = locked ? `손절 미준수 페널티로 잠김 (약 ${fmtRemainMs(remain)} 남음)` : '';
-      if(entryBtn){ entryBtn.disabled = locked; entryBtn.title = title; }
-      if(exitBtn){ exitBtn.disabled = locked; exitBtn.title = title; }
+      const title = locked ? '손절 미준수 페널티로 잠김 — 코드를 입력해야 풀립니다' : '';
+      SL_LOCKED_BUTTON_IDS.forEach(id=>{
+        const el = document.getElementById(id);
+        if(el){ el.disabled = locked; el.title = title; }
+      });
+
+      const banner = document.getElementById('slLockBanner');
+      const textEl = document.getElementById('slLockText');
+      const codeInput = document.getElementById('slLockCodeInput');
+      const unlockBtn = document.getElementById('slLockUnlockBtn');
+      if(!banner) return;
+      if(!locked){ banner.style.display = 'none'; return; }
+      banner.style.display = 'block';
+      if(remain > 0){
+        textEl.textContent = `🔒 손절 미준수 페널티 — 최소 대기 시간 약 ${fmtRemainMs(remain)} 남음 (그 전엔 코드를 넣어도 안 풀려요)`;
+        if(unlockBtn) unlockBtn.disabled = true;
+      } else {
+        textEl.textContent = `🔒 대기 시간이 지났습니다. 발급받았던 코드를 입력하면 매매/분석 기능이 풀려요.`;
+        if(unlockBtn) unlockBtn.disabled = false;
+      }
     }
+    function attemptSlUnlock(){
+      const errEl = document.getElementById('slLockError');
+      const codeInput = document.getElementById('slLockCodeInput');
+      if(errEl) errEl.textContent = '';
+      if(getSlLockRemainMs() > 0){
+        if(errEl) errEl.textContent = `아직 최소 대기 시간이 지나지 않았어요 (약 ${fmtRemainMs(getSlLockRemainMs())} 남음).`;
+        return;
+      }
+      const entered = (codeInput && codeInput.value || '').trim();
+      let stored = null;
+      try { stored = localStorage.getItem(SL_LOCK_CODE_KEY); } catch(e){}
+      if(!entered){ if(errEl) errEl.textContent = '코드를 입력해주세요.'; return; }
+      if(entered !== stored){ if(errEl) errEl.textContent = '코드가 일치하지 않아요. 발급받았던 숫자를 다시 확인해주세요.'; return; }
+      try { localStorage.removeItem(SL_LOCK_KEY); localStorage.removeItem(SL_LOCK_CODE_KEY); } catch(e){}
+      if(codeInput) codeInput.value = '';
+      applySlLockUI();
+    }
+    // AI 분석 함수(전역 스코프)에서도 방어적으로 체크할 수 있도록 노출
+    window.isSlLocked = isSlLocked;
+    window.getSlLockRemainMs = getSlLockRemainMs;
+    window.fmtRemainMs = fmtRemainMs;
 
     async function doEntryFlow(){
-      const remain = getSlLockRemainMs();
-      if(remain > 0){
+      if(isSlLocked()){
         openWizard('🟢 진입 (매수)');
-        wizardShowResult(`🔒 손절 미준수 페널티로 잠겨있어요.<br>약 ${fmtRemainMs(remain)} 후 다시 시도해주세요.`);
+        const remain = getSlLockRemainMs();
+        wizardShowResult(remain > 0
+          ? `🔒 손절 미준수 페널티로 잠겨있어요.<br>최소 대기 시간 약 ${fmtRemainMs(remain)} 후, 발급받은 코드를 입력해야 풀려요.`
+          : `🔒 손절 미준수 페널티로 잠겨있어요.<br>발급받은 코드를 상단 배너에 입력해서 해제해주세요.`);
         return;
       }
       openWizard('🟢 진입 (매수)');
@@ -1149,10 +1240,12 @@ function dashboardTodayKey(date){
     }
 
     async function doExitFlow(){
-      const lockRemain = getSlLockRemainMs();
-      if(lockRemain > 0){
+      if(isSlLocked()){
         openWizard('🔴 청산 (매도)');
-        wizardShowResult(`🔒 손절 미준수 페널티로 잠겨있어요.<br>약 ${fmtRemainMs(lockRemain)} 후 다시 시도해주세요.`);
+        const remain = getSlLockRemainMs();
+        wizardShowResult(remain > 0
+          ? `🔒 손절 미준수 페널티로 잠겨있어요.<br>최소 대기 시간 약 ${fmtRemainMs(remain)} 후, 발급받은 코드를 입력해야 풀려요.`
+          : `🔒 손절 미준수 페널티로 잠겨있어요.<br>발급받은 코드를 상단 배너에 입력해서 해제해주세요.`);
         return;
       }
       const positions = loadPositions();
@@ -1193,8 +1286,9 @@ function dashboardTodayKey(date){
             applySlLockUI();
             penaltyHtml = `<br><br><div style="background:#241417; border:1px solid #4A2129; border-radius:8px; padding:10px 12px;">` +
               `<b style="color:var(--red);">🔒 뇌동매매 페널티 발동</b><br>` +
-              `정직하게 체크해주셨어요. 페널티 코드 <b style="color:var(--amber); font-family:var(--mono);">#${code}</b> — 앞으로 1시간 동안 진입/청산이 잠깁니다.<br>` +
-              `<span style="color:var(--muted); font-size:11px;">감정을 가라앉힐 시간을 버는 게 목적이에요.</span>` +
+              `정직하게 체크해주셨어요. 페널티 코드 <b style="color:var(--amber); font-family:var(--mono);">#${code}</b> — 이 코드 꼭 기억해두세요.<br>` +
+              `최소 1시간 동안은 진입/청산과 모든 AI·규칙 분석 버튼이 잠기고, 그 이후엔 이 코드를 직접 입력해야만 풀립니다 (자동으로 안 풀림).<br>` +
+              `<span style="color:var(--muted); font-size:11px;">차트 확인은 계속 가능해요. 감정을 가라앉히고, 스스로 코드를 입력하는 행동까지가 페널티예요.</span>` +
               `</div>`;
           }
         }
@@ -1225,6 +1319,10 @@ function dashboardTodayKey(date){
     document.getElementById('tlEntryBtn').addEventListener('click', doEntryFlow);
     applySlLockUI();
     setInterval(applySlLockUI, 15000);
+    const slUnlockBtn = document.getElementById('slLockUnlockBtn');
+    const slCodeInput = document.getElementById('slLockCodeInput');
+    if(slUnlockBtn) slUnlockBtn.addEventListener('click', attemptSlUnlock);
+    if(slCodeInput) slCodeInput.addEventListener('keydown', e => { if(e.key === 'Enter') attemptSlUnlock(); });
     document.getElementById('tlExitBtn').addEventListener('click', doExitFlow);
 
     document.getElementById('tlAddWinBtn').addEventListener('click', ()=>addTrade(1));
@@ -1320,6 +1418,7 @@ function dashboardTodayKey(date){
   const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
   const firstWeekday = (y, m) => new Date(y, m - 1, 1).getDay(); // 0=일 ... 6=토
   const weekdayOf = (y, m, d) => new Date(y, m - 1, d).getDay();
+  const toMonFirstIdx = dow => (dow + 6) % 7; // 0=일...6=토 → 0=월...6=일로 재매핑
 
   function loadDayTrades(y, m, d){
     try { return JSON.parse(localStorage.getItem(`trades_${y}-${pad2(m)}-${pad2(d)}`) || '[]'); } catch(e){ return []; }
@@ -1339,7 +1438,7 @@ function dashboardTodayKey(date){
     if(nextBtn) nextBtn.disabled = curIndex >= MONTHS.length - 1;
 
     const nDays = daysInMonth(y, m);
-    const lead = firstWeekday(y, m);
+    const lead = toMonFirstIdx(firstWeekday(y, m));
     let monthPnl = 0, monthCount = 0, monthWins = 0;
     const dayCells = []; // {day, pnl, count, isWeekend} | null(blank)
     for(let i = 0; i < lead; i++) dayCells.push(null);
@@ -1366,7 +1465,7 @@ function dashboardTodayKey(date){
     const gridEl = document.getElementById('calGrid');
     if(gridEl){
       gridEl.innerHTML = '';
-      ['일','월','화','수','목','금','토'].forEach(dow=>{
+      ['월','화','수','목','금','토','일'].forEach(dow=>{
         const el = document.createElement('div'); el.className = 'cal-dow'; el.textContent = dow; gridEl.appendChild(el);
       });
       dayCells.forEach(cell=>{
@@ -1812,6 +1911,11 @@ function computeInstantAnalysis(){
 function renderRuleAnalysis(){
   const box = document.getElementById('ruleAnalysisResult');
   if(!box) return;
+  if(window.isSlLocked && window.isSlLocked()){
+    box.style.display = 'block';
+    box.innerHTML = '🔒 손절 미준수 페널티로 잠겨있어요.<br>상단 배너에서 발급받은 코드를 입력해야 풀려요.';
+    return;
+  }
   const r = computeInstantAnalysis();
   box.style.display = 'block';
   if(!r){
@@ -2913,6 +3017,10 @@ function extractAiText(data, isClaude){
 // 공통 분석 함수
 async function requestAiAnalysis(provider) {
   if (!base64Image) return;
+  if(window.isSlLocked && window.isSlLocked()){
+    showAppAlert('🔒 손절 미준수 페널티로 잠겨있어요.\n상단 배너에서 발급받은 코드를 입력해야 분석 버튼이 풀려요.');
+    return;
+  }
   const guard = getActiveOpeningGuard();
   if(guard){
     showAppAlert(`⏱️ ${guard.market} 장 시작 직후(${OPENING_GUARD_MINUTES}분)라 분석을 잠시 제한해요.\n변동성에 휩쓸리기 쉬운 구간이라 그래요 — 차트 확인은 계속 가능하고, 약 ${Math.ceil(guard.remainMin)}분 후 다시 시도해주세요.`);
@@ -2984,6 +3092,10 @@ async function analyzeCurrentChart(isClaude){
   const btn = document.getElementById(isClaude ? 'btnAnalyzeCurrentClaude' : 'btnAnalyzeCurrentGemini');
   const otherBtn = document.getElementById(isClaude ? 'btnAnalyzeCurrentGemini' : 'btnAnalyzeCurrentClaude');
   const originalText = btn.textContent;
+  if(window.isSlLocked && window.isSlLocked()){
+    showAppAlert('🔒 손절 미준수 페널티로 잠겨있어요.\n상단 배너에서 발급받은 코드를 입력해야 분석 버튼이 풀려요.');
+    return;
+  }
   const guard = getActiveOpeningGuard();
   if(guard){
     showAppAlert(`⏱️ ${guard.market} 장 시작 직후(${OPENING_GUARD_MINUTES}분)라 분석을 잠시 제한해요.\n변동성에 휩쓸리기 쉬운 구간이라 그래요 — 차트 확인은 계속 가능하고, 약 ${Math.ceil(guard.remainMin)}분 후 다시 시도해주세요.`);
@@ -3052,6 +3164,8 @@ async function analyzeCurrentChart(isClaude){
     if (aiText) {
       aiText = aiText.replace(/\n/g, '<br>');
       aiResultBox.innerHTML = '<div style="font-size:11px; color:var(--muted); margin-bottom:8px;">모델: <b style="color:' + (isClaude ? 'var(--amber)' : 'var(--cyan)') + '">' + modelName + '</b> (현재 차트)</div>' + aiText;
+      // 🟢 진입 시 약식 채점 대신 이 결과를 요약해서 재사용할 수 있도록 저장 (같은 종목 + 신선할 때만)
+      window.lastAiAnalysis = { html: aiText, ts: Date.now(), symbolKeys: (typeof liveSymbolKeys !== 'undefined' ? liveSymbolKeys.slice() : []), model: modelName };
     } else {
       aiResultBox.innerHTML = '<span style="color:var(--amber);">응답 파싱 실패</span>';
     }
