@@ -64,222 +64,221 @@
   .scoreBarRow .num{font-family:var(--mono); width:48px; text-align:right; flex-shrink:0;}
   footer{color:var(--muted); font-size:11px; text-align:center; margin-top:26px; line-height:1.7;}
 
-/* –– 📝 티커 메모장 (자유 텍스트, 자동 저장) –– */
-#memoFab{ position:fixed; right:14px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
-background:var(–panel-2); border:1px solid var(–line); color:var(–text); font-size:19px;
-display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
-#memoFab:hover{background:#1B2432;}
-#memoFab.has-content{border-color:var(–amber); color:var(–amber);}
-#memoPanel{ position:fixed; right:14px; bottom:118px; z-index:60; width:min(280px, calc(100vw - 28px)); max-height:min(360px, 60vh);
-background:var(–panel); border:1px solid var(–line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.5);
-display:none; flex-direction:column; overflow:hidden; }
-#memoPanel.open{display:flex;}
-#memoPanelHead{ display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(–line); }
-#memoPanelHead span{font-size:12px; font-weight:700; color:var(–text);}
-#memoStatus{font-size:10px; color:var(–muted); font-family:var(–mono);}
-#memoCloseBtn{background:transparent; border:none; color:var(–muted); font-size:16px; cursor:pointer; padding:2px 4px; line-height:1;}
-#memoCloseBtn:hover{color:var(–text);}
-#memoTextarea{ flex:1; width:100%; min-height:180px; background:var(–panel-2); color:var(–text); border:none;
-font-family:var(–mono); font-size:12px; padding:10px; resize:vertical; line-height:1.6; }
-#memoTextarea:focus{outline:none;}
+  /* ---- 📝 티커 메모장 (자유 텍스트, 자동 저장) ---- */
+  #memoFab{ position:fixed; right:14px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:19px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
+  #memoFab:hover{background:#1B2432;}
+  #memoFab.has-content{border-color:var(--amber); color:var(--amber);}
+  #memoPanel{ position:fixed; right:14px; bottom:118px; z-index:60; width:min(280px, calc(100vw - 28px)); max-height:min(360px, 60vh);
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.5);
+    display:none; flex-direction:column; overflow:hidden; }
+  #memoPanel.open{display:flex;}
+  #memoPanelHead{ display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(--line); }
+  #memoPanelHead span{font-size:12px; font-weight:700; color:var(--text);}
+  #memoStatus{font-size:10px; color:var(--muted); font-family:var(--mono);}
+  #memoCloseBtn{background:transparent; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 4px; line-height:1;}
+  #memoCloseBtn:hover{color:var(--text);}
+  #memoTextarea{ flex:1; width:100%; min-height:180px; background:var(--panel-2); color:var(--text); border:none;
+    font-family:var(--mono); font-size:12px; padding:10px; resize:vertical; line-height:1.6; }
+  #memoTextarea:focus{outline:none;}
 
-/* –– ⚠️ 매매 전 경고 게이트 (역매매 위험성) –– */
-#warnGateOverlay{ position:fixed; inset:0; z-index:200; background:rgba(6,9,13,.86); backdrop-filter:blur(2px);
-display:flex; align-items:center; justify-content:center; padding:20px; }
-#warnGateOverlay.hidden{display:none;}
-#warnGateCard{ width:min(520px, 100%); max-height:86vh; overflow-y:auto; background:var(–panel); border:1px solid var(–line);
-border-radius:14px; padding:26px 24px 20px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
-#warnGateCard h3{ margin:0 0 4px; font-size:17px; color:var(–red); display:flex; align-items:center; gap:8px; }
-#warnGateCard .sub{ font-size:11.5px; color:var(–muted); margin-bottom:16px; }
-#warnGateCard .body{ font-size:13.5px; line-height:1.85; color:var(–text); }
-#warnGateCard .body p{margin:0 0 12px;}
-#warnGateCard .body b{color:var(–amber);}
-#warnGateCard .checklist{ list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:8px; }
-#warnGateCard .checklist li{ background:var(–panel-2); border:1px solid var(–line); border-radius:8px; padding:10px 12px; font-size:13px; line-height:1.6; }
-#warnGateCard .checklist li b{color:var(–cyan);}
-#warnGateCard .ruleBox{ background:#241417; border:1px solid #4A2129; border-radius:8px; padding:11px 13px; font-size:12.5px; line-height:1.7; color:#F0A6AC; margin-bottom:6px; }
-#warnGateCard .ruleBox b{color:var(–red);}
+  /* ---- ⚠️ 매매 전 경고 게이트 (역매매 위험성) ---- */
+  #warnGateOverlay{ position:fixed; inset:0; z-index:200; background:rgba(6,9,13,.86); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  #warnGateOverlay.hidden{display:none;}
+  #warnGateCard{ width:min(520px, 100%); max-height:86vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:26px 24px 20px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  #warnGateCard h3{ margin:0 0 4px; font-size:17px; color:var(--red); display:flex; align-items:center; gap:8px; }
+  #warnGateCard .sub{ font-size:11.5px; color:var(--muted); margin-bottom:16px; }
+  #warnGateCard .body{ font-size:13.5px; line-height:1.85; color:var(--text); }
+  #warnGateCard .body p{margin:0 0 12px;}
+  #warnGateCard .body b{color:var(--amber);}
+  #warnGateCard .checklist{ list-style:none; margin:0 0 14px; padding:0; display:flex; flex-direction:column; gap:8px; }
+  #warnGateCard .checklist li{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:13px; line-height:1.6; }
+  #warnGateCard .checklist li b{color:var(--cyan);}
+  #warnGateCard .ruleBox{ background:#241417; border:1px solid #4A2129; border-radius:8px; padding:11px 13px; font-size:12.5px; line-height:1.7; color:#F0A6AC; margin-bottom:6px; }
+  #warnGateCard .ruleBox b{color:var(--red);}
 
-/* –– ⚠️ 역매매 금지 모드 배너 –– */
-#revengeBanner{ display:none; background:#241417; border:1px solid #4A2129; color:#F0A6AC; font-size:12.5px; font-weight:700;
-text-align:center; padding:10px 12px; border-radius:8px; margin-bottom:12px; }
-#revengeBanner.show{display:block;}
+  /* ---- ⚠️ 역매매 금지 모드 배너 ---- */
+  #revengeBanner{ display:none; background:#241417; border:1px solid #4A2129; color:#F0A6AC; font-size:12.5px; font-weight:700;
+    text-align:center; padding:10px 12px; border-radius:8px; margin-bottom:12px; }
+  #revengeBanner.show{display:block;}
 
-/* –– 🚫 일일 손실 한도 하드락 –– */
-#lossLimitOverlay{ position:fixed; inset:0; z-index:210; background:rgba(6,9,13,.92); display:flex; align-items:center; justify-content:center; padding:20px; }
-#lossLimitOverlay.hidden{display:none;}
-#lossLimitCard{ width:min(440px,100%); background:var(–panel); border:1px solid #4A2129; border-radius:14px; padding:26px 24px 22px; box-shadow:0 20px 60px rgba(0,0,0,.6); text-align:center; }
-#lossLimitCard h3{ color:var(–red); font-size:18px; margin:0 0 12px; }
-#lossLimitCard p{font-size:13.5px; line-height:1.8; color:var(–text); margin:0 0 6px;}
-#lossLimitCard .amt{font-family:var(–mono); font-size:20px; font-weight:800; color:var(–red); margin:10px 0 14px;}
+  /* ---- 🚫 일일 손실 한도 하드락 ---- */
+  #lossLimitOverlay{ position:fixed; inset:0; z-index:210; background:rgba(6,9,13,.92); display:flex; align-items:center; justify-content:center; padding:20px; }
+  #lossLimitOverlay.hidden{display:none;}
+  #lossLimitCard{ width:min(440px,100%); background:var(--panel); border:1px solid #4A2129; border-radius:14px; padding:26px 24px 22px; box-shadow:0 20px 60px rgba(0,0,0,.6); text-align:center; }
+  #lossLimitCard h3{ color:var(--red); font-size:18px; margin:0 0 12px; }
+  #lossLimitCard p{font-size:13.5px; line-height:1.8; color:var(--text); margin:0 0 6px;}
+  #lossLimitCard .amt{font-family:var(--mono); font-size:20px; font-weight:800; color:var(--red); margin:10px 0 14px;}
 
-.feature-locked{ position:relative; pointer-events:none; user-select:none; }
-.feature-locked::after{ content:‘🚫 오늘 손실 한도 도달로 잠김 (내일 자동 해제)’; position:absolute; inset:0; background:rgba(10,14,19,.9);
-display:flex; align-items:center; justify-content:center; color:var(–red); font-size:12px; font-weight:700; border-radius:10px; z-index:5; text-align:center; padding:10px; }
+  .feature-locked{ position:relative; pointer-events:none; user-select:none; }
+  .feature-locked::after{ content:'🚫 오늘 손실 한도 도달로 잠김 (내일 자동 해제)'; position:absolute; inset:0; background:rgba(10,14,19,.9);
+    display:flex; align-items:center; justify-content:center; color:var(--red); font-size:12px; font-weight:700; border-radius:10px; z-index:5; text-align:center; padding:10px; }
 
-/* –– 📊 매매 기록 & 손실 한도 위젯 –– */
-#tradeLogFab{ position:fixed; right:70px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
-background:var(–panel-2); border:1px solid var(–line); color:var(–text); font-size:19px;
-display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
-#tradeLogFab:hover{background:#1B2432;}
-#tradeLogFab.revenge-off{border-color:var(–red); color:var(–red);}
-#tradeLogPanel{ position:fixed; right:14px; bottom:118px; z-index:60; width:min(320px, calc(100vw - 28px)); max-height:min(480px, 72vh);
-background:var(–panel); border:1px solid var(–line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.5);
-display:none; flex-direction:column; overflow:hidden; }
-#tradeLogPanel.open{display:flex;}
-#tradeLogHead{ display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(–line); }
-#tradeLogHead span{font-size:12px; font-weight:700; color:var(–text);}
-#tradeLogCloseBtn{background:transparent; border:none; color:var(–muted); font-size:16px; cursor:pointer; padding:2px 4px; line-height:1;}
-#tradeLogCloseBtn:hover{color:var(–text);}
-#tradeLogBody{flex:1; overflow-y:auto; padding:12px;}
-.tl-row{display:flex; gap:6px; align-items:center; margin-bottom:10px;}
-.tl-row label{font-size:11px; color:var(–muted); width:72px; flex-shrink:0;}
-.tl-row input{flex:1; min-width:0; background:var(–panel-2); border:1px solid var(–line); border-radius:6px; color:var(–text); font-family:var(–mono); font-size:12px; padding:6px 8px;}
-#tlLimitSaveBtn{padding:6px 10px; font-size:11px;}
-#tlProgressWrap{margin:2px 0 12px;}
-#tlProgressLabel{display:flex; justify-content:space-between; font-size:10.5px; color:var(–muted); font-family:var(–mono); margin-bottom:4px;}
-#tlProgressTrack{background:#1B2432; border-radius:5px; height:8px; overflow:hidden;}
-#tlProgressFill{height:100%; border-radius:5px; background:var(–good); transition:width .2s, background .2s;}
-#tlProgressFill.danger{background:var(–red);}
-#tlStreakNote{font-size:11px; color:var(–muted); margin-bottom:10px; font-family:var(–mono);}
-#tlStreakNote.off{color:var(–red); font-weight:700;}
-#tlAddRow{display:flex; gap:6px; margin-bottom:6px;}
-#tlAmountInput{flex:1; min-width:0; background:var(–panel-2); border:1px solid var(–line); border-radius:6px; color:var(–text); font-family:var(–mono); font-size:12px; padding:6px 8px;}
-#tlNoteInput{width:100%; background:var(–panel-2); border:1px solid var(–line); border-radius:6px; color:var(–text); font-family:var(–mono); font-size:11.5px; padding:6px 8px; margin-bottom:10px;}
-.tl-btn-win{background:var(–good); border-color:var(–good); color:#062018; font-weight:700; padding:6px 10px; font-size:11px;}
-.tl-btn-loss{background:var(–red); border-color:var(–red); color:#fff; font-weight:700; padding:6px 10px; font-size:11px;}
-#tlList{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px;}
-#tlList li{display:flex; justify-content:space-between; align-items:center; background:var(–panel-2); border:1px solid var(–line); border-radius:6px; padding:6px 9px; font-family:var(–mono); font-size:11.5px;}
-#tlList li .amt.win{color:var(–good);} #tlList li .amt.loss{color:var(–red);}
-#tlList li .note{color:var(–muted); font-size:10.5px; margin-left:6px;}
-#tlList li button{background:transparent; border:none; color:var(–muted); cursor:pointer; font-size:12px; padding:0 2px; flex-shrink:0;}
-#tlList li button:hover{color:var(–red);}
-#tlEmpty{font-size:11px; color:var(–muted); text-align:center; padding:14px 0;}
+  /* ---- 📊 매매 기록 & 손실 한도 위젯 ---- */
+  #tradeLogFab{ position:fixed; right:70px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:19px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
+  #tradeLogFab:hover{background:#1B2432;}
+  #tradeLogFab.revenge-off{border-color:var(--red); color:var(--red);}
+  #tradeLogPanel{ position:fixed; right:14px; bottom:118px; z-index:60; width:min(320px, calc(100vw - 28px)); max-height:min(480px, 72vh);
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.5);
+    display:none; flex-direction:column; overflow:hidden; }
+  #tradeLogPanel.open{display:flex;}
+  #tradeLogHead{ display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(--line); }
+  #tradeLogHead span{font-size:12px; font-weight:700; color:var(--text);}
+  #tradeLogCloseBtn{background:transparent; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 4px; line-height:1;}
+  #tradeLogCloseBtn:hover{color:var(--text);}
+  #tradeLogBody{flex:1; overflow-y:auto; padding:12px;}
+  .tl-row{display:flex; gap:6px; align-items:center; margin-bottom:10px;}
+  .tl-row label{font-size:11px; color:var(--muted); width:72px; flex-shrink:0;}
+  .tl-row input{flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; color:var(--text); font-family:var(--mono); font-size:12px; padding:6px 8px;}
+  #tlLimitSaveBtn{padding:6px 10px; font-size:11px;}
+  #tlProgressWrap{margin:2px 0 12px;}
+  #tlProgressLabel{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); font-family:var(--mono); margin-bottom:4px;}
+  #tlProgressTrack{background:#1B2432; border-radius:5px; height:8px; overflow:hidden;}
+  #tlProgressFill{height:100%; border-radius:5px; background:var(--good); transition:width .2s, background .2s;}
+  #tlProgressFill.danger{background:var(--red);}
+  #tlStreakNote{font-size:11px; color:var(--muted); margin-bottom:10px; font-family:var(--mono);}
+  #tlStreakNote.off{color:var(--red); font-weight:700;}
+  #tlAddRow{display:flex; gap:6px; margin-bottom:6px;}
+  #tlAmountInput{flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; color:var(--text); font-family:var(--mono); font-size:12px; padding:6px 8px;}
+  #tlNoteInput{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; color:var(--text); font-family:var(--mono); font-size:11.5px; padding:6px 8px; margin-bottom:10px;}
+  .tl-btn-win{background:var(--good); border-color:var(--good); color:#062018; font-weight:700; padding:6px 10px; font-size:11px;}
+  .tl-btn-loss{background:var(--red); border-color:var(--red); color:#fff; font-weight:700; padding:6px 10px; font-size:11px;}
+  #tlList{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px;}
+  #tlList li{display:flex; justify-content:space-between; align-items:center; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 9px; font-family:var(--mono); font-size:11.5px;}
+  #tlList li .amt.win{color:var(--good);} #tlList li .amt.loss{color:var(--red);}
+  #tlList li .note{color:var(--muted); font-size:10.5px; margin-left:6px;}
+  #tlList li button{background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:12px; padding:0 2px; flex-shrink:0;}
+  #tlList li button:hover{color:var(--red);}
+  #tlEmpty{font-size:11px; color:var(--muted); text-align:center; padding:14px 0;}
 
-#tlCalcBox{ background:var(–panel-2); border:1px solid var(–line); border-radius:8px; margin-bottom:12px; overflow:hidden; }
-#tlCalcToggle{ padding:9px 11px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(–cyan); user-select:none; }
-#tlCalcToggle:hover{background:#1B2432;}
-#tlCalcBody{ padding:0 11px 11px; }
-#tlCalcBody select{ flex:1; min-width:0; background:var(–panel); border:1px solid var(–line); border-radius:6px; color:var(–text); font-size:11px; padding:6px 8px; }
-#tlCalcResult{ margin-top:8px; padding:9px 10px; background:var(–panel); border:1px solid var(–line); border-radius:6px; font-family:var(–mono); font-size:12.5px; text-align:center; color:var(–muted); }
-#tlCalcResult.win{color:var(–good); font-weight:700;}
-#tlCalcResult.loss{color:var(–red); font-weight:700;}
+  #tlCalcBox{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; margin-bottom:12px; overflow:hidden; }
+  #tlCalcToggle{ padding:9px 11px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--cyan); user-select:none; }
+  #tlCalcToggle:hover{background:#1B2432;}
+  #tlCalcBody{ padding:0 11px 11px; }
+  #tlCalcBody select{ flex:1; min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:6px; color:var(--text); font-size:11px; padding:6px 8px; }
+  #tlCalcResult{ margin-top:8px; padding:9px 10px; background:var(--panel); border:1px solid var(--line); border-radius:6px; font-family:var(--mono); font-size:12.5px; text-align:center; color:var(--muted); }
+  #tlCalcResult.win{color:var(--good); font-weight:700;}
+  #tlCalcResult.loss{color:var(--red); font-weight:700;}
 
-#tlEntryExitRow{display:flex; gap:8px; margin-bottom:10px;}
-#tlEntryExitRow button{flex:1; padding:10px 8px; font-size:12.5px;}
-#tlPositionsWrap{ background:var(–panel-2); border:1px solid var(–line); border-radius:8px; padding:9px 11px; margin-bottom:12px; }
-#tlPositionsHead{font-size:11px; font-weight:700; color:var(–muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em;}
-#tlPositionsList{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px;}
-#tlPositionsList li{display:flex; justify-content:space-between; align-items:center; background:var(–panel); border:1px solid var(–line); border-radius:6px; padding:6px 9px; font-family:var(–mono); font-size:11.5px;}
-#tlPositionsList li .sym{font-weight:700; color:var(–text);}
-#tlPositionsList li .meta{color:var(–muted); font-size:10.5px; margin-left:6px;}
-#tlPositionsEmpty{font-size:11px; color:var(–muted); text-align:center; padding:6px 0 2px;}
+  #tlEntryExitRow{display:flex; gap:8px; margin-bottom:10px;}
+  #tlEntryExitRow button{flex:1; padding:10px 8px; font-size:12.5px;}
+  #tlPositionsWrap{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 11px; margin-bottom:12px; }
+  #tlPositionsHead{font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em;}
+  #tlPositionsList{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px;}
+  #tlPositionsList li{display:flex; justify-content:space-between; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 9px; font-family:var(--mono); font-size:11.5px;}
+  #tlPositionsList li .sym{font-weight:700; color:var(--text);}
+  #tlPositionsList li .meta{color:var(--muted); font-size:10.5px; margin-left:6px;}
+  #tlPositionsEmpty{font-size:11px; color:var(--muted); text-align:center; padding:6px 0 2px;}
 
-#tlAdvancedBox{ border:1px solid var(–line); border-radius:8px; margin-bottom:10px; overflow:hidden; }
-#tlAdvancedToggle{ padding:9px 11px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(–muted); user-select:none; background:var(–panel-2); }
-#tlAdvancedToggle:hover{background:#1B2432;}
-#tlAdvancedBody{padding:11px;}
+  #tlAdvancedBox{ border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; }
+  #tlAdvancedToggle{ padding:9px 11px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--muted); user-select:none; background:var(--panel-2); }
+  #tlAdvancedToggle:hover{background:#1B2432;}
+  #tlAdvancedBody{padding:11px;}
 
-#tlList li .tag{font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:4px; margin-right:5px;}
-#tlList li .tag.win{background:#0E2A20; color:var(–good);}
-#tlList li .tag.loss{background:#2A1416; color:var(–red);}
+  #tlList li .tag{font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:4px; margin-right:5px;}
+  #tlList li .tag.win{background:#0E2A20; color:var(--good);}
+  #tlList li .tag.loss{background:#2A1416; color:var(--red);}
 
-/* –– 📅 매매 캘린더 –– */
-#calendarFab{ position:fixed; right:126px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
-background:var(–panel-2); border:1px solid var(–line); color:var(–text); font-size:19px;
-display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
-#calendarFab:hover{background:#1B2432;}
-#calendarOverlay{ position:fixed; inset:0; z-index:190; background:rgba(6,9,13,.88); display:flex; align-items:center; justify-content:center; padding:16px; }
-#calendarOverlay.hidden{display:none;}
-#calendarCard{ width:min(640px, 100%); max-height:92vh; overflow-y:auto; background:var(–panel); border:1px solid var(–line);
-border-radius:14px; padding:18px 18px 22px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
-#calHead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-#calHead span{font-size:15px; font-weight:700; color:var(–text);}
-#calCloseBtn{background:transparent; border:none; color:var(–muted); font-size:18px; cursor:pointer; padding:2px 6px; line-height:1;}
-#calCloseBtn:hover{color:var(–text);}
-#calNav{ display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:14px; }
-#calNav button{ width:34px; height:34px; border-radius:8px; padding:0; font-size:14px; }
-#calNav button:disabled{opacity:.25; cursor:not-allowed;}
-#calMonthLabel{font-size:16px; font-weight:800; font-family:var(–mono); min-width:120px; text-align:center;}
-#calMonthSummary{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
-#calMonthSummary .stat{background:var(–panel-2); border:1px solid var(–line); border-radius:8px; padding:9px 10px; text-align:center;}
-#calMonthSummary .stat .k{font-size:10px; color:var(–muted); text-transform:uppercase; letter-spacing:.04em;}
-#calMonthSummary .stat .v{font-family:var(–mono); font-size:14px; font-weight:800; margin-top:3px;}
-#calMonthSummary .stat .v.win{color:var(–good);} #calMonthSummary .stat .v.loss{color:var(–red);}
-#calGrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:16px; }
-.cal-dow{ text-align:center; font-size:10px; color:var(–muted); font-weight:700; padding-bottom:4px; }
-.cal-day{ position:relative; min-height:52px; border-radius:6px; border:1px solid var(–line); background:var(–panel-2);
-padding:4px 5px; font-family:var(–mono); display:flex; flex-direction:column; gap:2px; }
-.cal-day.blank{visibility:hidden;}
-.cal-day.today{border-color:var(–cyan);}
-.cal-day.win{background:#0E2A20; border-color:#1C4433;}
-.cal-day.loss{background:#2A1416; border-color:#4A2129;}
-.cal-day .d{font-size:10.5px; color:var(–muted); font-weight:700;}
-.cal-day.win .d, .cal-day.loss .d{color:var(–text);}
-.cal-day .pnl{font-size:10px; font-weight:800;}
-.cal-day.win .pnl{color:var(–good);} .cal-day.loss .pnl{color:var(–red);}
-.cal-day .cnt{font-size:8.5px; color:var(–muted);}
-#calWeeklyHead{font-size:11px; font-weight:700; color:var(–muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
-#calWeekly{display:flex; flex-direction:column; gap:6px;}
-.cal-week-row{ display:flex; justify-content:space-between; align-items:center; background:var(–panel-2); border:1px solid var(–line);
-border-radius:8px; padding:8px 11px; font-family:var(–mono); font-size:12px; }
-.cal-week-row .lbl{color:var(–muted);}
-.cal-week-row .v.win{color:var(–good); font-weight:700;} .cal-week-row .v.loss{color:var(–red); font-weight:700;} .cal-week-row .v.flat{color:var(–muted);}
+  /* ---- 📅 매매 캘린더 ---- */
+  #calendarFab{ position:fixed; right:126px; bottom:64px; z-index:60; width:46px; height:46px; border-radius:50%;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:19px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.4); padding:0; }
+  #calendarFab:hover{background:#1B2432;}
+  #calendarOverlay{ position:fixed; inset:0; z-index:190; background:rgba(6,9,13,.88); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #calendarOverlay.hidden{display:none;}
+  #calendarCard{ width:min(640px, 100%); max-height:92vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:18px 18px 22px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  #calHead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  #calHead span{font-size:15px; font-weight:700; color:var(--text);}
+  #calCloseBtn{background:transparent; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:2px 6px; line-height:1;}
+  #calCloseBtn:hover{color:var(--text);}
+  #calNav{ display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:14px; }
+  #calNav button{ width:34px; height:34px; border-radius:8px; padding:0; font-size:14px; }
+  #calNav button:disabled{opacity:.25; cursor:not-allowed;}
+  #calMonthLabel{font-size:16px; font-weight:800; font-family:var(--mono); min-width:120px; text-align:center;}
+  #calMonthSummary{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  #calMonthSummary .stat{background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 10px; text-align:center;}
+  #calMonthSummary .stat .k{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  #calMonthSummary .stat .v{font-family:var(--mono); font-size:14px; font-weight:800; margin-top:3px;}
+  #calMonthSummary .stat .v.win{color:var(--good);} #calMonthSummary .stat .v.loss{color:var(--red);}
+  #calGrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:16px; }
+  .cal-dow{ text-align:center; font-size:10px; color:var(--muted); font-weight:700; padding-bottom:4px; }
+  .cal-day{ position:relative; min-height:52px; border-radius:6px; border:1px solid var(--line); background:var(--panel-2);
+    padding:4px 5px; font-family:var(--mono); display:flex; flex-direction:column; gap:2px; }
+  .cal-day.blank{visibility:hidden;}
+  .cal-day.today{border-color:var(--cyan);}
+  .cal-day.win{background:#0E2A20; border-color:#1C4433;}
+  .cal-day.loss{background:#2A1416; border-color:#4A2129;}
+  .cal-day .d{font-size:10.5px; color:var(--muted); font-weight:700;}
+  .cal-day.win .d, .cal-day.loss .d{color:var(--text);}
+  .cal-day .pnl{font-size:10px; font-weight:800;}
+  .cal-day.win .pnl{color:var(--good);} .cal-day.loss .pnl{color:var(--red);}
+  .cal-day .cnt{font-size:8.5px; color:var(--muted);}
+  #calWeeklyHead{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  #calWeekly{display:flex; flex-direction:column; gap:6px;}
+  .cal-week-row{ display:flex; justify-content:space-between; align-items:center; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:8px; padding:8px 11px; font-family:var(--mono); font-size:12px; }
+  .cal-week-row .lbl{color:var(--muted);}
+  .cal-week-row .v.win{color:var(--good); font-weight:700;} .cal-week-row .v.loss{color:var(--red); font-weight:700;} .cal-week-row .v.flat{color:var(--muted);}
 
-/* –– 🧭 진입/청산 단계별 입력 위저드 (prompt() 미사용, 웹뷰 호환) –– */
-#tlWizardOverlay{ position:fixed; inset:0; z-index:220; background:rgba(6,9,13,.9); display:flex; align-items:center; justify-content:center; padding:20px; }
-#tlWizardOverlay.hidden{display:none;}
-#tlWizardCard{ width:min(360px, 100%); background:var(–panel); border:1px solid var(–line); border-radius:14px; padding:20px 20px 18px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
-#tlWizardHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
-#tlWizardHead span{font-size:14px; font-weight:800; color:var(–text);}
-#tlWizardCloseBtn{background:transparent; border:none; color:var(–muted); font-size:17px; cursor:pointer; padding:2px 6px; line-height:1;}
-#tlWizardCloseBtn:hover{color:var(–text);}
-#tlWizardStepLabel{font-size:12.5px; color:var(–muted); margin-bottom:10px; line-height:1.6; min-height:1em;}
-#tlWizardBody input{ width:100%; background:var(–panel-2); border:1px solid var(–line); border-radius:8px; color:var(–text);
-font-family:var(–mono); font-size:16px; padding:11px 12px; }
-#tlWizardBody input:focus{outline:1px solid var(–cyan);}
-.tl-wizard-choice{ display:block; width:100%; text-align:left; background:var(–panel-2); border:1px solid var(–line); border-radius:8px;
-color:var(–text); font-family:var(–mono); font-size:12.5px; padding:10px 12px; margin-bottom:7px; cursor:pointer; }
-.tl-wizard-choice:hover{background:#1B2432; border-color:var(–cyan);}
-.tl-wizard-quickpicks{margin-top:12px;}
-.tl-wizard-quickpicks-hint{font-size:10.5px; color:var(–muted); margin-bottom:6px;}
-.tl-wizard-chip-row{display:flex; flex-wrap:wrap; gap:6px;}
-.tl-wizard-chip{ background:var(–panel-2); border:1px solid var(–line); border-radius:16px; color:var(–text);
-font-family:var(–mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
-.tl-wizard-chip:hover{background:#1B2432; border-color:var(–cyan); color:var(–cyan);}
+  /* ---- 🧭 진입/청산 단계별 입력 위저드 (prompt() 미사용, 웹뷰 호환) ---- */
+  #tlWizardOverlay{ position:fixed; inset:0; z-index:220; background:rgba(6,9,13,.9); display:flex; align-items:center; justify-content:center; padding:20px; }
+  #tlWizardOverlay.hidden{display:none;}
+  #tlWizardCard{ width:min(360px, 100%); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 20px 18px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  #tlWizardHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  #tlWizardHead span{font-size:14px; font-weight:800; color:var(--text);}
+  #tlWizardCloseBtn{background:transparent; border:none; color:var(--muted); font-size:17px; cursor:pointer; padding:2px 6px; line-height:1;}
+  #tlWizardCloseBtn:hover{color:var(--text);}
+  #tlWizardStepLabel{font-size:12.5px; color:var(--muted); margin-bottom:10px; line-height:1.6; min-height:1em;}
+  #tlWizardBody input{ width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; color:var(--text);
+    font-family:var(--mono); font-size:16px; padding:11px 12px; }
+  #tlWizardBody input:focus{outline:1px solid var(--cyan);}
+  .tl-wizard-choice{ display:block; width:100%; text-align:left; background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-family:var(--mono); font-size:12.5px; padding:10px 12px; margin-bottom:7px; cursor:pointer; }
+  .tl-wizard-choice:hover{background:#1B2432; border-color:var(--cyan);}
+  .tl-wizard-quickpicks{margin-top:12px;}
+  .tl-wizard-quickpicks-hint{font-size:10.5px; color:var(--muted); margin-bottom:6px;}
+  .tl-wizard-chip-row{display:flex; flex-wrap:wrap; gap:6px;}
+  .tl-wizard-chip{ background:var(--panel-2); border:1px solid var(--line); border-radius:16px; color:var(--text);
+    font-family:var(--mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
+  .tl-wizard-chip:hover{background:#1B2432; border-color:var(--cyan); color:var(--cyan);}
 
-/* –– 📡 국내 종목 코드 선택 팝업 –– */
-#codePickerOverlay{ position:fixed; inset:0; z-index:220; background:rgba(6,9,13,.9); display:flex; align-items:center; justify-content:center; padding:20px; }
-#codePickerOverlay.hidden{display:none;}
-#codePickerCard{ width:min(380px, 100%); max-height:80vh; overflow-y:auto; background:var(–panel); border:1px solid var(–line); border-radius:14px; padding:20px 20px 18px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
-#codePickerHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
-#codePickerHead span{font-size:14px; font-weight:800; color:var(–text);}
-#codePickerCloseBtn{background:transparent; border:none; color:var(–muted); font-size:17px; cursor:pointer; padding:2px 6px; line-height:1;}
-#codePickerCloseBtn:hover{color:var(–text);}
-#codePickerManualRow{display:flex; gap:6px; margin-bottom:10px;}
-#codePickerManualRow input{flex:1; min-width:0; background:var(–panel-2); border:1px solid var(–line); border-radius:8px; color:var(–text); font-family:var(–mono); font-size:13px; padding:9px 10px;}
-#codePickerManualRow button{padding:9px 12px; font-size:12px;}
-#codePickerDailyLabel{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(–muted); margin-bottom:14px; cursor:pointer;}
-#codePickerQuickHint{font-size:10.5px; color:var(–muted); margin-bottom:8px;}
-#codePickerChips{display:flex; flex-wrap:wrap; gap:6px;}
+  /* ---- 📡 국내 종목 코드 선택 팝업 ---- */
+  #codePickerOverlay{ position:fixed; inset:0; z-index:220; background:rgba(6,9,13,.9); display:flex; align-items:center; justify-content:center; padding:20px; }
+  #codePickerOverlay.hidden{display:none;}
+  #codePickerCard{ width:min(380px, 100%); max-height:80vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 20px 18px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  #codePickerHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  #codePickerHead span{font-size:14px; font-weight:800; color:var(--text);}
+  #codePickerCloseBtn{background:transparent; border:none; color:var(--muted); font-size:17px; cursor:pointer; padding:2px 6px; line-height:1;}
+  #codePickerCloseBtn:hover{color:var(--text);}
+  #codePickerManualRow{display:flex; gap:6px; margin-bottom:10px;}
+  #codePickerManualRow input{flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:var(--mono); font-size:13px; padding:9px 10px;}
+  #codePickerManualRow button{padding:9px 12px; font-size:12px;}
+  #codePickerDailyLabel{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted); margin-bottom:14px; cursor:pointer;}
+  #codePickerQuickHint{font-size:10.5px; color:var(--muted); margin-bottom:8px;}
+  #codePickerChips{display:flex; flex-wrap:wrap; gap:6px;}
 
-/* –– 🔔 앱 전용 알림 모달 (native alert() 대체, 웹뷰 호환) –– */
-#appAlertOverlay{ position:fixed; inset:0; z-index:230; background:rgba(6,9,13,.9); display:flex; align-items:center; justify-content:center; padding:20px; }
-#appAlertOverlay.hidden{display:none;}
-#appAlertCard{ width:min(360px, 100%); background:var(–panel); border:1px solid var(–line); border-radius:14px; padding:20px 20px 18px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
-#appAlertMsg{font-size:13.5px; line-height:1.8; color:var(–text); white-space:pre-line;}
-#tlWizardResult{font-size:13px; line-height:1.9; color:var(–text);}
-#tlWizardResult b{font-size:14px;}
-#tlWizardError{color:var(–red); font-size:11.5px; min-height:1.4em; margin-top:8px;}
-#tlWizardBtns{display:flex; gap:8px; margin-top:16px;}
-#tlWizardBtns button{flex:1; padding:10px 8px; font-size:12.5px;}
-#warnGateVisitNote{ margin-top:14px; font-size:11px; color:var(–muted); font-family:var(–mono); border-top:1px solid var(–line); padding-top:10px; }
-#warnGateBtns{ display:flex; gap:8px; margin-top:18px; flex-wrap:wrap; }
-#warnGateBtns button{flex:1; min-width:140px;}
-#btnGateSkipToday[disabled]{ opacity:.3; cursor:not-allowed; }
-#btnGateSkipToday[disabled]::after{ content:’ (오늘 10회 이상 접속해야 활성화)’; font-size:10px; }
+  /* ---- 🔔 앱 전용 알림 모달 (native alert() 대체, 웹뷰 호환) ---- */
+  #appAlertOverlay{ position:fixed; inset:0; z-index:230; background:rgba(6,9,13,.9); display:flex; align-items:center; justify-content:center; padding:20px; }
+  #appAlertOverlay.hidden{display:none;}
+  #appAlertCard{ width:min(360px, 100%); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 20px 18px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  #appAlertMsg{font-size:13.5px; line-height:1.8; color:var(--text); white-space:pre-line;}
+  #tlWizardResult{font-size:13px; line-height:1.9; color:var(--text);}
+  #tlWizardResult b{font-size:14px;}
+  #tlWizardError{color:var(--red); font-size:11.5px; min-height:1.4em; margin-top:8px;}
+  #tlWizardBtns{display:flex; gap:8px; margin-top:16px;}
+  #tlWizardBtns button{flex:1; padding:10px 8px; font-size:12.5px;}
+  #warnGateVisitNote{ margin-top:14px; font-size:11px; color:var(--muted); font-family:var(--mono); border-top:1px solid var(--line); padding-top:10px; }
+  #warnGateBtns{ display:flex; gap:8px; margin-top:18px; flex-wrap:wrap; }
+  #warnGateBtns button{flex:1; min-width:140px;}
+  #btnGateSkipToday[disabled]{ opacity:.3; cursor:not-allowed; }
+  #btnGateSkipToday[disabled]::after{ content:' (오늘 10회 이상 접속해야 활성화)'; font-size:10px; }
 </style>
-
 </head>
 <body>
   <div id="warnGateOverlay" class="hidden">
@@ -318,8 +317,7 @@ font-family:var(–mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
     <div id="watchlistBar"></div>
   </div>
 
-<button id="memoFab" title="티커 메모장">📝</button>
-
+  <button id="memoFab" title="티커 메모장">📝</button>
   <div id="memoPanel">
     <div id="memoPanelHead">
       <span>📝 티커 메모장</span>
@@ -329,8 +327,7 @@ font-family:var(–mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
     <textarea id="memoTextarea" placeholder="추가할 종목/티커를 자유롭게 적어두세요.&#10;예)&#10;NVDA&#10;069500 KODEX 200&#10;삼성바이오로직스 207940"></textarea>
   </div>
 
-<button id="tradeLogFab" title="매매 기록 & 손실 한도">📊</button>
-
+  <button id="tradeLogFab" title="매매 기록 & 손실 한도">📊</button>
   <div id="tradeLogPanel">
     <div id="tradeLogHead">
       <span>📊 매매 기록 & 손실 한도</span>
@@ -348,65 +345,61 @@ font-family:var(–mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
       </div>
       <div id="tlStreakNote"></div>
 
-```
-  <div id="tlEntryExitRow">
-    <button id="tlEntryBtn" class="tl-btn-win">🟢 진입 (매수)</button>
-    <button id="tlExitBtn" class="tl-btn-loss">🔴 청산 (매도)</button>
-  </div>
-
-  <div id="tlPositionsWrap">
-    <div id="tlPositionsHead">보유 중 포지션</div>
-    <ul id="tlPositionsList"></ul>
-    <div id="tlPositionsEmpty">보유 중인 포지션이 없습니다.</div>
-  </div>
-
-  <div id="tlAdvancedBox">
-    <div id="tlAdvancedToggle">⚙️ 직접 입력 (계산기 / 수동 기록) ▾</div>
-    <div id="tlAdvancedBody" style="display:none;">
-
-  <div id="tlCalcBox">
-    <div id="tlCalcToggle">🧮 매수·매도가로 자동 계산 ▾</div>
-    <div id="tlCalcBody" style="display:none;">
-      <div class="tl-row">
-        <label>종목 구분</label>
-        <select id="tlCalcType">
-          <option value="stock">일반주식 (수수료 0.00318% · 매도세 0.2%)</option>
-          <option value="etf">ETF (수수료 0.00417% · 매도세 0%)</option>
-        </select>
+      <div id="tlEntryExitRow">
+        <button id="tlEntryBtn" class="tl-btn-win">🟢 진입 (매수)</button>
+        <button id="tlExitBtn" class="tl-btn-loss">🔴 청산 (매도)</button>
       </div>
-      <div class="tl-row"><label>매수가</label><input id="tlCalcBuy" type="number" min="0" placeholder="예: 248500"></div>
-      <div class="tl-row"><label>매도가</label><input id="tlCalcSell" type="number" min="0" placeholder="예: 250000"></div>
-      <div class="tl-row"><label>수량</label><input id="tlCalcQty" type="number" min="0" placeholder="예: 43"></div>
-      <div class="tl-row" style="font-size:10px; color:var(--muted); margin-top:-4px;">
-        <label>세율/수수료율</label>
-        <span>필요하면 아래에서 직접 수정 가능</span>
+
+      <div id="tlPositionsWrap">
+        <div id="tlPositionsHead">보유 중 포지션</div>
+        <ul id="tlPositionsList"></ul>
+        <div id="tlPositionsEmpty">보유 중인 포지션이 없습니다.</div>
       </div>
-      <div class="tl-row"><label>수수료율(%)</label><input id="tlCalcFeeRate" type="number" step="0.0001" min="0"></div>
-      <div class="tl-row"><label>매도세율(%)</label><input id="tlCalcTaxRate" type="number" step="0.01" min="0"></div>
-      <div id="tlCalcResult">매수가·매도가·수량을 입력하세요</div>
-      <button id="tlCalcCommitBtn" style="width:100%; margin-top:8px;" disabled>이 결과로 기록하기</button>
+
+      <div id="tlAdvancedBox">
+        <div id="tlAdvancedToggle">⚙️ 직접 입력 (계산기 / 수동 기록) ▾</div>
+        <div id="tlAdvancedBody" style="display:none;">
+
+      <div id="tlCalcBox">
+        <div id="tlCalcToggle">🧮 매수·매도가로 자동 계산 ▾</div>
+        <div id="tlCalcBody" style="display:none;">
+          <div class="tl-row">
+            <label>종목 구분</label>
+            <select id="tlCalcType">
+              <option value="stock">일반주식 (수수료 0.00318% · 매도세 0.2%)</option>
+              <option value="etf">ETF (수수료 0.00417% · 매도세 0%)</option>
+            </select>
+          </div>
+          <div class="tl-row"><label>매수가</label><input id="tlCalcBuy" type="number" min="0" placeholder="예: 248500"></div>
+          <div class="tl-row"><label>매도가</label><input id="tlCalcSell" type="number" min="0" placeholder="예: 250000"></div>
+          <div class="tl-row"><label>수량</label><input id="tlCalcQty" type="number" min="0" placeholder="예: 43"></div>
+          <div class="tl-row" style="font-size:10px; color:var(--muted); margin-top:-4px;">
+            <label>세율/수수료율</label>
+            <span>필요하면 아래에서 직접 수정 가능</span>
+          </div>
+          <div class="tl-row"><label>수수료율(%)</label><input id="tlCalcFeeRate" type="number" step="0.0001" min="0"></div>
+          <div class="tl-row"><label>매도세율(%)</label><input id="tlCalcTaxRate" type="number" step="0.01" min="0"></div>
+          <div id="tlCalcResult">매수가·매도가·수량을 입력하세요</div>
+          <button id="tlCalcCommitBtn" style="width:100%; margin-top:8px;" disabled>이 결과로 기록하기</button>
+        </div>
+      </div>
+
+      <div id="tlAddRow">
+        <input id="tlAmountInput" type="number" min="0" placeholder="금액(원)">
+        <button id="tlAddWinBtn" class="tl-btn-win">＋ 수익</button>
+        <button id="tlAddLossBtn" class="tl-btn-loss">－ 손실</button>
+      </div>
+      <input id="tlNoteInput" placeholder="메모 (선택, 예: 9EMA 지지 확인 후 진입)">
+
+        </div>
+      </div>
+
+      <ul id="tlList"></ul>
+      <div id="tlEmpty">오늘 기록된 매매가 없습니다.</div>
     </div>
   </div>
 
-  <div id="tlAddRow">
-    <input id="tlAmountInput" type="number" min="0" placeholder="금액(원)">
-    <button id="tlAddWinBtn" class="tl-btn-win">＋ 수익</button>
-    <button id="tlAddLossBtn" class="tl-btn-loss">－ 손실</button>
-  </div>
-  <input id="tlNoteInput" placeholder="메모 (선택, 예: 9EMA 지지 확인 후 진입)">
-
-    </div>
-  </div>
-
-  <ul id="tlList"></ul>
-  <div id="tlEmpty">오늘 기록된 매매가 없습니다.</div>
-</div>
-```
-
-  </div>
-
-<button id="calendarFab" title="매매 캘린더">📅</button>
-
+  <button id="calendarFab" title="매매 캘린더">📅</button>
   <div id="calendarOverlay" class="hidden">
     <div id="calendarCard">
       <div id="calHead">
@@ -506,13 +499,11 @@ font-family:var(–mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
 </div>
 
 <!-- 이미지 미리보기 영역 -->
-
 <div id="imagePreviewContainer" style="display:none; margin-top:15px; text-align:center;">
   <img id="chartPreview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--line);">
 </div>
 
 <!-- 분석 결과 텍스트 영역 -->
-
 <div id="aiResultBox" style="display:none; margin-top:15px; padding:15px; background:var(--panel-2); border-left:4px solid var(--cyan); white-space:pre-wrap; line-height:1.6; font-size:13px;">
   분석 결과가 여기에 표시됩니다.
 </div>
@@ -535,6 +526,11 @@ font-family:var(–mono); font-size:11.5px; padding:6px 12px; cursor:pointer; }
       <div id="crosshairLine" style="display:none; position:absolute; top:0; bottom:0; width:1px; background:rgba(220,228,236,0.35); pointer-events:none;"></div>
       <div id="chartTooltip" style="display:none; position:absolute; pointer-events:none; z-index:20; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-family:var(--mono); font-size:11px; color:var(--text); white-space:nowrap; line-height:1.6;"></div>
     </div>
+    <div class="chartTitle" style="margin-top:14px;">
+      <h2 style="margin:0; font-size:12px;">🔍 최근 60분봉 (확대)</h2>
+      <span id="recentCountLabel" style="font-size:10.5px; color:var(--muted); font-family:var(--mono);"></span>
+    </div>
+    <canvas id="recentCanvas" height="222"></canvas>
     <h2 style="margin:10px 0 6px; font-size:11px;">거래량</h2>
     <canvas id="volumeCanvas" height="70"></canvas>
     <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
@@ -1483,6 +1479,7 @@ function render(){
   closeWarn.style.display = remaining < 25 && dataMode !== 'real_live' && !direction && !viewAllMode ? 'inline' : 'none';
 
   drawPriceChart(visible, revealEnd);
+  drawRecentChart(c, revealEnd);
   drawVolumeChart(visible, revealEnd);
   drawStochChart(revealEnd);
 
@@ -1499,6 +1496,69 @@ function render(){
   } else {
     selInfo.innerHTML = `정답 공개됨 — 위 차트에 실제 이후 흐름이 펼쳐져 있어요. <u>아무 지점이나 클릭</u>하면 그 시점에서 <b>롱을 골랐을 때/숏을 골랐을 때 점수</b>를 각각 보여드려요.`;
   }
+}
+
+function drawTimeAxis(ctx, visible, xAt, W, padR, H){
+  const n = visible.length;
+  const axisTop = H;
+  ctx.strokeStyle = '#1C2530'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
+
+  const hmParts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
+  const dateKeyFmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'});
+  const getHM = dt => { const p={}; hmParts.formatToParts(dt).forEach(x=>{ if(x.type!=='literal') p[x.type]=x.value; }); return {h:+p.hour, m:+p.minute}; };
+
+  ctx.textAlign = 'center';
+  let lastDateKey = null, lastTickX = -Infinity, ticksDrawn = 0;
+  for(let i=0; i<n; i++){
+    const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
+    const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
+    if(!(mm===0 && hh%2===0)) continue; // 2시간 단위 정각(00:00, 02:00, 04:00 ...)에서만 눈금 표시
+    const x = xAt(i);
+    if(x - lastTickX < 34) continue; // 라벨 겹침 방지
+    lastTickX = x; ticksDrawn++;
+
+    const dateKey = dateKeyFmt.format(dt);
+    ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
+    if(dateKey !== lastDateKey && lastDateKey !== null){
+      ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
+      ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16); // "YYYY-MM-DD" → "MM/DD"
+    } else {
+      ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
+      ctx.fillText(`${String(hh).padStart(2,'0')}:00`, x, axisTop+16);
+    }
+    lastDateKey = dateKey;
+  }
+  // 표시 구간이 2시간보다 짧아 정각 눈금이 하나도 안 걸리는 경우를 위한 대체 눈금(균등 간격, 실제 시:분)
+  if(ticksDrawn===0){
+    const plotW = W - (xAt(0)) - padR; // 대략적인 plotW 역산 (padL 위치 = xAt(0))
+    const targetTicks = Math.max(2, Math.floor(plotW/90));
+    const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
+    let fallbackLastDateKey = null;
+    for(let i=0; i<n; i+=tickStep){
+      const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
+      const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
+      const x = xAt(i); const dateKey = dateKeyFmt.format(dt);
+      ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
+      if(dateKey !== fallbackLastDateKey && fallbackLastDateKey !== null){
+        ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
+        ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16);
+      } else {
+        ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
+        ctx.fillText(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, x, axisTop+16);
+      }
+      fallbackLastDateKey = dateKey; lastTickX = x;
+    }
+  }
+  // 맨 오른쪽(최신 캔들) 시각은 항상 별도로 강조 표시 — 눈금 간격상 잘리기 쉬운 위치라 겹치지 않을 때만 그림
+  if(n>0){
+    const lastCd = visible[n-1];
+    if(lastCd && lastCd.epochMs!=null && (W-padR) - lastTickX > 40){
+      const {h:lh, m:lm} = getHM(new Date(lastCd.epochMs));
+      ctx.fillStyle = '#F5A623'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
+      ctx.fillText(`${String(lh).padStart(2,'0')}:${String(lm).padStart(2,'0')}`, W-padR, axisTop+16);
+    }
+  }
+  ctx.textAlign = 'left';
 }
 
 function drawPriceChart(visible, upto){
@@ -1552,64 +1612,55 @@ function drawPriceChart(visible, upto){
   }
 
   /* ---------------- 하단 시간축 (KST 2시간 단위 정각 + 날짜 바뀌면 MM/DD로 강조) ---------------- */
-  const axisTop = H;
-  ctx.strokeStyle = '#1C2530'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
+  drawTimeAxis(ctx, visible, xAt, W, padR, H);
+}
 
-  const hmParts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
-  const dateKeyFmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'});
-  const getHM = dt => { const p={}; hmParts.formatToParts(dt).forEach(x=>{ if(x.type!=='literal') p[x.type]=x.value; }); return {h:+p.hour, m:+p.minute}; };
+const RECENT_WINDOW = 60;
+function drawRecentChart(candles, revealEnd){
+  const canvasEl = document.getElementById('recentCanvas');
+  if(!canvasEl) return;
+  const ctx = canvasEl.getContext('2d'); const W = canvasEl.clientWidth || 1000;
+  const H = 200; const axisH = 22; const Htotal = H + axisH;
+  canvasEl.width = W*2; canvasEl.height = Htotal*2; ctx.scale(2,2); ctx.clearRect(0,0,W,Htotal);
 
-  ctx.textAlign = 'center';
-  let lastDateKey = null, lastTickX = -Infinity, ticksDrawn = 0;
-  for(let i=0; i<n; i++){
-    const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
-    const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
-    if(!(mm===0 && hh%2===0)) continue; // 2시간 단위 정각(00:00, 02:00, 04:00 ...)에서만 눈금 표시
-    const x = xAt(i);
-    if(x - lastTickX < 34) continue; // 라벨 겹침 방지
-    lastTickX = x; ticksDrawn++;
+  const startIdx = Math.max(0, revealEnd - RECENT_WINDOW + 1);
+  const visible = candles.slice(startIdx, revealEnd+1);
+  const n = visible.length;
+  if(n === 0) return;
+  const padL=54, padR=10, padT=10, padB=10; const plotW=W-padL-padR, plotH=H-padT-padB;
 
-    const dateKey = dateKeyFmt.format(dt);
-    ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
-    if(dateKey !== lastDateKey && lastDateKey !== null){
-      ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
-      ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16); // "YYYY-MM-DD" → "MM/DD"
-    } else {
-      ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
-      ctx.fillText(`${String(hh).padStart(2,'0')}:00`, x, axisTop+16);
-    }
-    lastDateKey = dateKey;
+  let lo=Infinity, hi=-Infinity; for(const cd of visible){ lo=Math.min(lo,cd.low); hi=Math.max(hi,cd.high); }
+  for(const arr of [indicators.ema20, indicators.ema200, indicators.vwap]){
+    for(let i=startIdx;i<=revealEnd;i++){ if(arr[i]!=null){ lo=Math.min(lo,arr[i]); hi=Math.max(hi,arr[i]); } }
   }
-  // 표시 구간이 2시간보다 짧아 정각 눈금이 하나도 안 걸리는 경우를 위한 대체 눈금(균등 간격, 실제 시:분)
-  if(ticksDrawn===0){
-    const targetTicks = Math.max(2, Math.floor(plotW/90));
-    const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
-    let fallbackLastDateKey = null;
-    for(let i=0; i<n; i+=tickStep){
-      const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
-      const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
-      const x = xAt(i); const dateKey = dateKeyFmt.format(dt);
-      ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
-      if(dateKey !== fallbackLastDateKey && fallbackLastDateKey !== null){
-        ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
-        ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16);
-      } else {
-        ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
-        ctx.fillText(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, x, axisTop+16);
-      }
-      fallbackLastDateKey = dateKey; lastTickX = x;
-    }
+  const pad = (hi-lo)*0.08 || 10; lo-=pad; hi+=pad;
+  const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = p => padT + (1-(p-lo)/(hi-lo))*plotH;
+
+  ctx.strokeStyle='#1C2530'; ctx.fillStyle='#5B6673'; ctx.font='10px monospace';
+  for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(Math.round(hi - g*(hi-lo)/4).toLocaleString(), 4, yy+3); }
+
+  const cw = Math.max(2, plotW/n*0.6);
+  for(let i=0;i<n;i++){
+    const cd = visible[i]; const x = xAt(i); const up = cd.close>=cd.open;
+    ctx.strokeStyle = up?'#E5484D':'#3B82F6'; ctx.fillStyle = up?'#E5484D':'#3B82F6';
+    ctx.beginPath(); ctx.moveTo(x,yAt(cd.high)); ctx.lineTo(x,yAt(cd.low)); ctx.stroke();
+    const yo=yAt(cd.open), yc=yAt(cd.close); ctx.fillRect(x-cw/2, Math.min(yo,yc), cw, Math.max(1,Math.abs(yo-yc)));
   }
-  // 맨 오른쪽(최신 캔들) 시각은 항상 별도로 강조 표시 — 눈금 간격상 잘리기 쉬운 위치라 겹치지 않을 때만 그림
-  if(n>0){
-    const lastCd = visible[n-1];
-    if(lastCd && lastCd.epochMs!=null && (W-padR) - lastTickX > 40){
-      const {h:lh, m:lm} = getHM(new Date(lastCd.epochMs));
-      ctx.fillStyle = '#F5A623'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
-      ctx.fillText(`${String(lh).padStart(2,'0')}:${String(lm).padStart(2,'0')}`, W-padR, axisTop+16);
-    }
+
+  function drawLine(getVal, color, width){
+    ctx.strokeStyle=color; ctx.lineWidth=width; ctx.beginPath(); let started=false;
+    for(let i=0;i<n;i++){ const v = getVal(startIdx+i); if(v==null) continue; const x=xAt(i), y=yAt(v); if(!started){ctx.moveTo(x,y); started=true;} else ctx.lineTo(x,y); } ctx.stroke();
   }
-  ctx.textAlign = 'left';
+  drawLine(idx=>indicators.vwap[idx], '#F5A623', 1.6);
+  drawLine(idx=>indicators.ema5[idx], '#35C9C1', 1.1);
+  drawLine(idx=>indicators.ema9[idx], '#E0629E', 1.1);
+  drawLine(idx=>indicators.ema20[idx], '#8A93A0', 1.3);
+  drawLine(idx=>indicators.ema200[idx], '#5B6BFF', 1.8);
+
+  drawTimeAxis(ctx, visible, xAt, W, padR, H);
+
+  const countLabel = document.getElementById('recentCountLabel');
+  if(countLabel) countLabel.textContent = `최근 ${n}개 캔들`;
 }
 
 function drawStochChart(upto){
