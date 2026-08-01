@@ -1411,6 +1411,7 @@ function startRound(newSession){
   whatIfMarkerIdx = null; document.getElementById('whatIfBox').style.display='none';
   viewAllMode = false; document.getElementById('btnViewAll').textContent = '🔭 모든 차트 보기 (09:00~장마감)';
   document.getElementById('rationale').value=''; document.getElementById('rationale').disabled=false;
+  pinnedIdx = null; hideTooltip(); // 새 차트 로드 시 이전 고정 툴팁 초기화
 
   const symbolLabelEl = document.getElementById('chartSymbolLabel');
   if(symbolLabelEl) symbolLabelEl.textContent = session.label ? session.label + ' · ' : '';
@@ -1498,37 +1499,57 @@ function render(){
   }
 }
 
-function drawTimeAxis(ctx, visible, xAt, W, padR, H){
+function drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, intervalMinutes){
+  intervalMinutes = intervalMinutes || 60;
   const n = visible.length;
   const axisTop = H;
-  ctx.strokeStyle = '#1C2530'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
 
   const hmParts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
   const dateKeyFmt = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'});
   const getHM = dt => { const p={}; hmParts.formatToParts(dt).forEach(x=>{ if(x.type!=='literal') p[x.type]=x.value; }); return {h:+p.hour, m:+p.minute}; };
+
+  // ---- 거래일이 바뀌는 지점(예: 애프터마켓→데이마켓 넘어갈 때)에 옅은 점선으로 전체 높이 구획선 표시 ----
+  if(padT != null){
+    let prevDateKey = null;
+    for(let i=0; i<n; i++){
+      const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
+      const dateKey = dateKeyFmt.format(new Date(cd.epochMs));
+      if(prevDateKey !== null && dateKey !== prevDateKey){
+        const x = xAt(i);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(220,228,236,0.22)'; ctx.setLineDash([3,3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H); ctx.stroke();
+        ctx.restore();
+      }
+      prevDateKey = dateKey;
+    }
+  }
+
+  ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
 
   ctx.textAlign = 'center';
   let lastDateKey = null, lastTickX = -Infinity, ticksDrawn = 0;
   for(let i=0; i<n; i++){
     const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
     const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
-    if(!(mm===0 && hh%2===0)) continue; // 2시간 단위 정각(00:00, 02:00, 04:00 ...)에서만 눈금 표시
+    const totalMin = hh*60 + mm;
+    if(totalMin % intervalMinutes !== 0) continue; // N분 단위 정각에서만 눈금 표시
     const x = xAt(i);
     if(x - lastTickX < 34) continue; // 라벨 겹침 방지
     lastTickX = x; ticksDrawn++;
 
     const dateKey = dateKeyFmt.format(dt);
-    ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
+    ctx.strokeStyle = '#3A4552'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
     if(dateKey !== lastDateKey && lastDateKey !== null){
-      ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = '#EDF1F5'; ctx.font = 'bold 11px monospace';
       ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16); // "YYYY-MM-DD" → "MM/DD"
     } else {
-      ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
-      ctx.fillText(`${String(hh).padStart(2,'0')}:00`, x, axisTop+16);
+      ctx.fillStyle = '#AEB8C4'; ctx.font = '11px monospace';
+      ctx.fillText(intervalMinutes < 60 ? `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}` : `${String(hh).padStart(2,'0')}:00`, x, axisTop+16);
     }
     lastDateKey = dateKey;
   }
-  // 표시 구간이 2시간보다 짧아 정각 눈금이 하나도 안 걸리는 경우를 위한 대체 눈금(균등 간격, 실제 시:분)
+  // 표시 구간이 짧아 정각 눈금이 하나도 안 걸리는 경우를 위한 대체 눈금(균등 간격, 실제 시:분)
   if(ticksDrawn===0){
     const plotW = W - (xAt(0)) - padR; // 대략적인 plotW 역산 (padL 위치 = xAt(0))
     const targetTicks = Math.max(2, Math.floor(plotW/90));
@@ -1538,12 +1559,12 @@ function drawTimeAxis(ctx, visible, xAt, W, padR, H){
       const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
       const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
       const x = xAt(i); const dateKey = dateKeyFmt.format(dt);
-      ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
+      ctx.strokeStyle = '#3A4552'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
       if(dateKey !== fallbackLastDateKey && fallbackLastDateKey !== null){
-        ctx.fillStyle = '#DCE4EC'; ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#EDF1F5'; ctx.font = 'bold 11px monospace';
         ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16);
       } else {
-        ctx.fillStyle = '#6E7B8B'; ctx.font = '10px monospace';
+        ctx.fillStyle = '#AEB8C4'; ctx.font = '11px monospace';
         ctx.fillText(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, x, axisTop+16);
       }
       fallbackLastDateKey = dateKey; lastTickX = x;
@@ -1554,7 +1575,7 @@ function drawTimeAxis(ctx, visible, xAt, W, padR, H){
     const lastCd = visible[n-1];
     if(lastCd && lastCd.epochMs!=null && (W-padR) - lastTickX > 40){
       const {h:lh, m:lm} = getHM(new Date(lastCd.epochMs));
-      ctx.fillStyle = '#F5A623'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'right';
+      ctx.fillStyle = '#F5A623'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'right';
       ctx.fillText(`${String(lh).padStart(2,'0')}:${String(lm).padStart(2,'0')}`, W-padR, axisTop+16);
     }
   }
@@ -1574,7 +1595,7 @@ function drawPriceChart(visible, upto){
   const pad = (hi-lo)*0.08 || 10; lo-=pad; hi+=pad;
   const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = p => padT + (1-(p-lo)/(hi-lo))*plotH;
 
-  ctx.strokeStyle='#1C2530'; ctx.fillStyle='#5B6673'; ctx.font='10px monospace';
+  ctx.strokeStyle='#1C2530'; ctx.fillStyle='#AEB8C4'; ctx.font='11px monospace';
   for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(Math.round(hi - g*(hi-lo)/4).toLocaleString(), 4, yy+3); }
 
   const cw = Math.max(1.5, plotW/n*0.6);
@@ -1611,8 +1632,8 @@ function drawPriceChart(visible, upto){
     ctx.fillStyle='#DCE4EC'; ctx.font='10px sans-serif'; ctx.fillText('복기', x-9, padT+11);
   }
 
-  /* ---------------- 하단 시간축 (KST 2시간 단위 정각 + 날짜 바뀌면 MM/DD로 강조) ---------------- */
-  drawTimeAxis(ctx, visible, xAt, W, padR, H);
+  /* ---------------- 하단 시간축 (KST 1시간 단위 정각 + 날짜 바뀌면 MM/DD 강조 + 거래일 구획선) ---------------- */
+  drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, 60);
 }
 
 const RECENT_WINDOW = 60;
@@ -1636,7 +1657,7 @@ function drawRecentChart(candles, revealEnd){
   const pad = (hi-lo)*0.08 || 10; lo-=pad; hi+=pad;
   const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = p => padT + (1-(p-lo)/(hi-lo))*plotH;
 
-  ctx.strokeStyle='#1C2530'; ctx.fillStyle='#5B6673'; ctx.font='10px monospace';
+  ctx.strokeStyle='#1C2530'; ctx.fillStyle='#AEB8C4'; ctx.font='11px monospace';
   for(let g=0; g<=4; g++){ const yy = padT + g*plotH/4; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); ctx.fillText(Math.round(hi - g*(hi-lo)/4).toLocaleString(), 4, yy+3); }
 
   const cw = Math.max(2, plotW/n*0.6);
@@ -1657,7 +1678,7 @@ function drawRecentChart(candles, revealEnd){
   drawLine(idx=>indicators.ema20[idx], '#8A93A0', 1.3);
   drawLine(idx=>indicators.ema200[idx], '#5B6BFF', 1.8);
 
-  drawTimeAxis(ctx, visible, xAt, W, padR, H);
+  drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, 5);
 
   const countLabel = document.getElementById('recentCountLabel');
   if(countLabel) countLabel.textContent = `최근 ${n}개 캔들`;
@@ -1670,7 +1691,7 @@ function drawStochChart(upto){
   const xAt = i => padL + (i/(Math.max(n-1,1)))*plotW; const yAt = v => padT + (1-v/100)*plotH;
 
   ctx.strokeStyle='#1C2530'; [20,50,80].forEach(v=>{ ctx.beginPath(); ctx.moveTo(padL,yAt(v)); ctx.lineTo(W-padR,yAt(v)); ctx.stroke(); });
-  ctx.fillStyle='#5B6673'; ctx.font='10px monospace'; ctx.fillText('80',4,yAt(80)+3); ctx.fillText('20',4,yAt(20)+3);
+  ctx.fillStyle='#AEB8C4'; ctx.font='11px monospace'; ctx.fillText('80',4,yAt(80)+3); ctx.fillText('20',4,yAt(20)+3);
 
   function drawLine(arr,color){
     ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.beginPath(); let started=false;
@@ -1693,7 +1714,7 @@ function drawVolumeChart(visible, upto){
   if(capV <= 0) capV = Math.max(...vols, 1);
   const yAt = v => padT + (1 - Math.min(v,capV)/capV) * plotH;
 
-  ctx.fillStyle='#5B6673'; ctx.font='10px monospace';
+  ctx.fillStyle='#AEB8C4'; ctx.font='11px monospace';
   ctx.fillText(Math.round(capV).toLocaleString()+' (95%)', 4, padT+9);
   ctx.fillText('0', 4, H-padB);
 
@@ -1743,26 +1764,25 @@ priceCanvas.addEventListener('click', (e)=>{
   }
 });
 
-/* ---------------- 마우스/터치 오버 시 캔들 날짜·시각(KST) 툴팁 ---------------- */
+/* ---------------- 마우스/터치 오버 시 캔들 날짜·시각(KST) 툴팁 (+ 클릭 시 고정) ---------------- */
 const crosshairLine = document.getElementById('crosshairLine');
 const chartTooltip = document.getElementById('chartTooltip');
-function handleChartHover(clientX){
-  if(!lastPriceLayout || !session){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; return; }
+let pinnedIdx = null; // null이면 일반 호버 모드, 숫자면 그 캔들에 고정된 상태
+
+function renderTooltip(idx, xCss, pinned){
   const rect = priceCanvas.getBoundingClientRect();
-  const xCss = clientX - rect.left;
-  const {padL, plotW, n} = lastPriceLayout;
-  if(xCss < padL - 2 || xCss > padL + plotW + 2){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; return; }
-  const idxFloat = (xCss - padL) / plotW * (n - 1);
-  const idx = Math.max(0, Math.min(n - 1, Math.round(idxFloat)));
+  const {padL, plotW} = lastPriceLayout;
   const cd = session.candles[idx];
-  if(!cd){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; return; }
+  if(!cd){ hideTooltip(); return; }
 
   crosshairLine.style.display = 'block';
   crosshairLine.style.left = Math.max(padL, Math.min(padL + plotW, xCss)) + 'px';
+  crosshairLine.style.background = pinned ? 'rgba(245,166,35,0.55)' : 'rgba(220,228,236,0.35)';
 
   chartTooltip.style.display = 'block';
+  chartTooltip.style.pointerEvents = pinned ? 'auto' : 'none';
   chartTooltip.innerHTML =
-    `<b>${fmtDateTime(idx)}</b><br>` +
+    `<b>${pinned ? '📌 ' : ''}${fmtDateTime(idx)}</b>${pinned ? ' <span id="tooltipUnpinBtn" style="cursor:pointer; color:var(--muted); float:right; margin-left:8px;">✕</span>' : ''}<br>` +
     `시 ${Math.round(cd.open).toLocaleString()} · 고 ${Math.round(cd.high).toLocaleString()}<br>` +
     `저 ${Math.round(cd.low).toLocaleString()} · 종 ${Math.round(cd.close).toLocaleString()}<br>` +
     `거래량 ${Math.round(cd.v).toLocaleString()}`;
@@ -1771,9 +1791,39 @@ function handleChartHover(clientX){
   if(tipLeft + 148 > wrapWidth) tipLeft = xCss - 160;
   chartTooltip.style.left = Math.max(4, tipLeft) + 'px';
   chartTooltip.style.top = '6px';
+
+  if(pinned){
+    const unpinBtn = document.getElementById('tooltipUnpinBtn');
+    if(unpinBtn) unpinBtn.addEventListener('click', (e)=>{ e.stopPropagation(); unpinTooltip(); });
+  }
+}
+function hideTooltip(){ crosshairLine.style.display='none'; chartTooltip.style.display='none'; chartTooltip.style.pointerEvents='none'; }
+function unpinTooltip(){ pinnedIdx = null; hideTooltip(); }
+
+function handleChartHover(clientX){
+  if(pinnedIdx != null) return; // 고정돼 있으면 마우스를 움직여도 그 지점 표시를 그대로 유지
+  if(!lastPriceLayout || !session){ hideTooltip(); return; }
+  const rect = priceCanvas.getBoundingClientRect();
+  const xCss = clientX - rect.left;
+  const {padL, plotW, n} = lastPriceLayout;
+  if(xCss < padL - 2 || xCss > padL + plotW + 2){ hideTooltip(); return; }
+  const idxFloat = (xCss - padL) / plotW * (n - 1);
+  const idx = Math.max(0, Math.min(n - 1, Math.round(idxFloat)));
+  renderTooltip(idx, xCss, false);
 }
 priceCanvas.addEventListener('mousemove', (e)=> handleChartHover(e.clientX));
-priceCanvas.addEventListener('mouseleave', ()=>{ crosshairLine.style.display='none'; chartTooltip.style.display='none'; });
+priceCanvas.addEventListener('mouseleave', ()=>{ if(pinnedIdx == null) hideTooltip(); });
+priceCanvas.addEventListener('click', (e)=>{
+  // 기존 클릭 동작(되감기/복기 타점 선택)과는 별개로, 클릭한 지점의 툴팁을 항상 고정시킴 (실시간 모니터링 중에도 동작)
+  if(!lastPriceLayout || !session) return;
+  const rect = priceCanvas.getBoundingClientRect(); const xCss = e.clientX - rect.left;
+  const {padL, plotW, n} = lastPriceLayout;
+  if(xCss < padL - 2 || xCss > padL + plotW + 2) return;
+  const idxFloat = (xCss - padL) / plotW * (n - 1);
+  const idx = Math.max(0, Math.min(n - 1, Math.round(idxFloat)));
+  pinnedIdx = idx;
+  renderTooltip(idx, xCss, true);
+});
 let priceTouchStartX = null;
 priceCanvas.addEventListener('touchstart', (e)=>{
   if(e.touches && e.touches[0]) priceTouchStartX = e.touches[0].clientX;
@@ -1784,7 +1834,7 @@ priceCanvas.addEventListener('touchmove', (e)=>{
   handleChartHover(e.touches[0].clientX);
   if(dx > 6) e.preventDefault(); // 일정 이상 드래그(스크럽)할 때만 페이지 스크롤을 막아, 짧은 탭(진입/되감기)은 그대로 동작하게 함
 }, {passive:false});
-priceCanvas.addEventListener('touchend', ()=>{ crosshairLine.style.display='none'; chartTooltip.style.display='none'; });
+priceCanvas.addEventListener('touchend', ()=>{ if(pinnedIdx == null) hideTooltip(); });
 
 document.getElementById('btnRewindReset').addEventListener('click', ()=>{
   if(direction || dataMode==='real_live') return;
