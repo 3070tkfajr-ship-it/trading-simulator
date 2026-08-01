@@ -562,7 +562,8 @@
   <button id="btnStep">▶ 다음 1분 보기</button>
   <button id="btnRewindReset" class="ghost">⏹ 되감기 해제 (원래 시점으로)</button>
   <button id="btnViewAll" class="ghost">🔭 모든 차트 보기 (09:00~장마감)</button>
-  <button id="btnAnalyzeCurrent" class="live-btn" style="display:none;">🤖 현재 차트 AI 분석</button>
+  <button id="btnAnalyzeCurrentGemini" class="live-btn" style="display:none;">🤖 현재 차트 Gemini 분석</button>
+  <button id="btnAnalyzeCurrentClaude" class="live-btn" style="display:none; background:#D97706; border-color:#D97706;">🤖 현재 차트 Claude 분석</button>
   <span class="warn" id="closeWarn" style="display:none;">⚠ 장마감 임박 — 당일 청산 구간입니다 (오버나잇 금지)</span>
 </div>
 <div style="margin-top:10px;">
@@ -2682,7 +2683,7 @@ async function loadDomestic(code, tf, nameHint) {
         startRound({label: labelText, candles});
 
         // 🚀 핵심 포인트: 실시간 모니터링 화면이 떴을 때도 AI 분석 버튼을 바로 쓸 수 있게 강제 활성화!
-        document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
+        document.getElementById('btnAnalyzeCurrentGemini').style.display = 'inline-block'; document.getElementById('btnAnalyzeCurrentClaude').style.display = 'inline-block';
         document.getElementById('aiAnalysisPanel').style.display = 'block';
         
     } catch(e) { 
@@ -2776,7 +2777,7 @@ async function loadUs(symbol, nameHint) {
         startRound({label: usLabel, candles});
 
         // 실시간 모니터링 화면에서도 AI 분석 버튼을 바로 쓸 수 있게 활성화
-        document.getElementById('btnAnalyzeCurrent').style.display = 'inline-block';
+        document.getElementById('btnAnalyzeCurrentGemini').style.display = 'inline-block'; document.getElementById('btnAnalyzeCurrentClaude').style.display = 'inline-block';
         document.getElementById('aiAnalysisPanel').style.display = 'block';
 
     } catch(e) {
@@ -2972,15 +2973,15 @@ setInterval(updateOpeningGuardBanner, 15000);
 btnAnalyzeClaude.addEventListener('click', () => requestAiAnalysis('claude'));
 
 /* ---------------- 현재 차트 원클릭 분석 ---------------- */
-document.getElementById('btnAnalyzeCurrent').addEventListener('click', async function() {
-  const btn = this;
+async function analyzeCurrentChart(isClaude){
+  const btn = document.getElementById(isClaude ? 'btnAnalyzeCurrentClaude' : 'btnAnalyzeCurrentGemini');
+  const otherBtn = document.getElementById(isClaude ? 'btnAnalyzeCurrentGemini' : 'btnAnalyzeCurrentClaude');
   const originalText = btn.textContent;
   const guard = getActiveOpeningGuard();
   if(guard){
     showAppAlert(`⏱️ ${guard.market} 장 시작 직후(${OPENING_GUARD_MINUTES}분)라 분석을 잠시 제한해요.\n변동성에 휩쓸리기 쉬운 구간이라 그래요 — 차트 확인은 계속 가능하고, 약 ${Math.ceil(guard.remainMin)}분 후 다시 시도해주세요.`);
     return;
   }
-  const isClaude = true; // 기본값: Claude Sonnet 5 (prompt()가 일부 브라우저/웹뷰에서 막히는 문제가 있어 고정값으로 변경)
   const endpoint = isClaude
     ? 'https://kis-proxy-server-di40.onrender.com/analyze-claude'
     : 'https://kis-proxy-server-di40.onrender.com/analyze';
@@ -2988,6 +2989,7 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
 
   btn.textContent = modelName + ' 분석 중... ⏳';
   btn.disabled = true;
+  if(otherBtn) otherBtn.disabled = true;
   aiResultBox.style.display = 'block';
   aiResultBox.innerHTML = '<span style="color:var(--muted);">현재 차트 캡처 → ' + modelName + ' 분석 중...</span>';
   document.getElementById('aiAnalysisPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3052,8 +3054,11 @@ document.getElementById('btnAnalyzeCurrent').addEventListener('click', async fun
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
+    if(otherBtn) otherBtn.disabled = false;
   }
-});
+}
+document.getElementById('btnAnalyzeCurrentGemini').addEventListener('click', () => analyzeCurrentChart(false));
+document.getElementById('btnAnalyzeCurrentClaude').addEventListener('click', () => analyzeCurrentChart(true));
 </script>
 
 </body>
