@@ -472,7 +472,7 @@
     <div class="srcbar">
       <span id="srcBadge" class="badge live">● 합성(연습용) 데이터</span>
       <button id="btnLoadReal" class="live-btn">📡 실시간 모니터링 (한투 API)</button>
-      <button id="btnLoadUs" class="live-btn">🇺🇸 미국 주식 불러오기 (Twelve Data)</button>
+      <button id="btnLoadUs" class="live-btn">🇺🇸 미국 주식 불러오기 (Alpaca · 프리/애프터마켓 포함)</button>
       <button id="btnToggleCsv" class="ghost">📁 HTS 과거 데이터 복기 ▾</button>
       <button id="btnNewRound" class="primary">🎲 과거 합성 차트 연습</button>
     </div>
@@ -1342,7 +1342,7 @@ function krDateTimeToEpoch(dateStr, hourStr){
   const h=+hs.slice(0,2), mi=+hs.slice(2,4), s=+hs.slice(4,6);
   return kstWallToEpoch(y,mo,d,h,mi,s);
 }
-// Twelve Data "YYYY-MM-DD HH:mm:ss" (요청 시 &timezone=UTC 지정했다는 전제 하에 UTC로 해석)
+// "YYYY-MM-DD HH:mm:ss" 형식의 UTC 문자열을 epoch로 변환 (서버가 진짜 UTC로 맞춰서 내려준다는 전제, Alpaca의 t필드는 원래 UTC라 그대로 맞음)
 function usUtcDatetimeToEpoch(s){
   if(!s) return null;
   const [datePart, timePart] = s.split(' ');
@@ -2338,22 +2338,22 @@ document.getElementById('codePickerGoBtn').addEventListener('click', codePickerS
 document.getElementById('codePickerInput').addEventListener('keydown', e => { if(e.key === 'Enter') codePickerSubmitManual(); });
 document.getElementById('codePickerCloseBtn').addEventListener('click', () => document.getElementById('codePickerOverlay').classList.add('hidden'));
 
-// 🇺🇸 Twelve Data 미국 주식 1분봉 연동 (무료: 하루 800회, 분당 8회)
+// 🦙 Alpaca 미국 주식 1분봉 연동 (무료 IEX 피드, 프리/애프터마켓 포함) — 서버(/us-data)가 Twelve Data 호환 형식으로 변환해서 내려줌
 async function loadUs(symbol, nameHint) {
     try {
         const res = await fetch(`https://kis-proxy-server-di40.onrender.com/us-data?symbol=${encodeURIComponent(symbol)}`);
         const jsonData = await res.json();
 
         if(jsonData.status === 'error' || jsonData.code){
-            showAppAlert("Twelve Data 요청 실패: " + (jsonData.message || '알 수 없는 오류') + "\n(요청 한도를 넘었거나, 티커/키 설정을 확인해줘)");
+            showAppAlert("데이터 요청 실패: " + (jsonData.message || '알 수 없는 오류') + "\n(요청 한도를 넘었거나, 티커/키 설정을 확인해줘)");
             return;
         }
         if(jsonData.error){ showAppAlert("데이터를 불러오지 못했어: " + jsonData.error); return; }
 
         const values = jsonData.values;
-        if(!values || values.length === 0){ showAppAlert("데이터가 비어있어. 티커를 확인하거나(예: AAPL), 미국 장 마감/휴장 시간이라 최근 데이터가 없을 수 있어."); return; }
+        if(!values || values.length === 0){ showAppAlert("데이터가 비어있어. 티커를 확인하거나(예: AAPL), 최근 거래 데이터가 없을 수 있어."); return; }
 
-        const chronological = [...values].reverse(); // Twelve Data는 최신순으로 주므로 과거→현재 순으로 뒤집기
+        const chronological = [...values].reverse(); // 서버가 최신순으로 내려주므로 과거→현재 순으로 뒤집기
         const candles = [];
         for(const c of chronological){
             const o = parseFloat(c.open), h = parseFloat(c.high), l = parseFloat(c.low), close = parseFloat(c.close), v = parseFloat(c.volume);
@@ -2365,8 +2365,8 @@ async function loadUs(symbol, nameHint) {
 
         dataMode = 'real_live';
         const usLabel = nameHint && nameHint.toUpperCase() !== symbol.toUpperCase()
-          ? `${nameHint} (${symbol.toUpperCase()}) · Twelve Data 1분봉`
-          : `${symbol.toUpperCase()} · Twelve Data 1분봉`;
+          ? `${nameHint} (${symbol.toUpperCase()}) · Alpaca 1분봉`
+          : `${symbol.toUpperCase()} · Alpaca 1분봉`;
         startRound({label: usLabel, candles});
 
         // 실시간 모니터링 화면에서도 AI 분석 버튼을 바로 쓸 수 있게 활성화
