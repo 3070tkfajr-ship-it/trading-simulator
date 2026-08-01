@@ -567,7 +567,11 @@
       <h2 style="margin:0; font-size:12px;">🔍 최근 60분봉 (확대)</h2>
       <span id="recentCountLabel" style="font-size:10.5px; color:var(--muted); font-family:var(--mono);"></span>
     </div>
-    <canvas id="recentCanvas" height="222"></canvas>
+    <div id="recentChartWrap" style="position:relative;">
+      <canvas id="recentCanvas" height="222"></canvas>
+      <div id="recentCrosshairLine" style="display:none; position:absolute; top:0; bottom:0; width:1px; background:rgba(220,228,236,0.35); pointer-events:none;"></div>
+      <div id="recentChartTooltip" style="display:none; position:absolute; pointer-events:none; z-index:20; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-family:var(--mono); font-size:11px; color:var(--text); white-space:nowrap; line-height:1.6;"></div>
+    </div>
     <h2 style="margin:10px 0 6px; font-size:11px;">거래량</h2>
     <canvas id="volumeCanvas" height="70"></canvas>
     <div class="fmt" id="selInfo" style="margin-top:6px;">차트를 클릭하면 그 시점을 진입 시점으로 선택할 수 있어요.</div>
@@ -1716,6 +1720,7 @@ function startRound(newSession){
   viewAllMode = false; document.getElementById('btnViewAll').textContent = '🔭 모든 차트 보기 (09:00~장마감)';
   document.getElementById('rationale').value=''; document.getElementById('rationale').disabled=false;
   pinnedIdx = null; hideTooltip(); // 새 차트 로드 시 이전 고정 툴팁 초기화
+  if(typeof pinnedRecentIdx !== 'undefined'){ pinnedRecentIdx = null; if(typeof hideRecentTooltip === 'function') hideRecentTooltip(); }
 
   const symbolLabelEl = document.getElementById('chartSymbolLabel');
   if(symbolLabelEl) symbolLabelEl.textContent = session.label ? session.label + ' · ' : '';
@@ -2146,6 +2151,8 @@ function drawRecentChart(candles, revealEnd){
 
   drawTimeAxis(ctx, visible, xAt, W, padR, H, padT);
 
+  lastRecentLayout = { padL, plotW, n, startIdx };
+
   const countLabel = document.getElementById('recentCountLabel');
   if(countLabel) countLabel.textContent = `최근 ${n}개 캔들`;
 }
@@ -2301,6 +2308,91 @@ priceCanvas.addEventListener('touchmove', (e)=>{
   if(dx > 6) e.preventDefault(); // 일정 이상 드래그(스크럽)할 때만 페이지 스크롤을 막아, 짧은 탭(진입/되감기)은 그대로 동작하게 함
 }, {passive:false});
 priceCanvas.addEventListener('touchend', ()=>{ if(pinnedIdx == null) hideTooltip(); });
+
+/* ---------------- 🔍 최근 60분봉 미니차트 — 메인 차트와 동일한 호버/클릭 고정 툴팁 ---------------- */
+let lastRecentLayout = null;
+let pinnedRecentIdx = null; // 절대 인덱스(session.candles 기준) 저장
+
+function renderRecentTooltip(absIdx, xCss, pinned){
+  const recentCanvasEl = document.getElementById('recentCanvas');
+  const crossEl = document.getElementById('recentCrosshairLine');
+  const tipEl = document.getElementById('recentChartTooltip');
+  if(!recentCanvasEl || !crossEl || !tipEl || !lastRecentLayout) return;
+  const rect = recentCanvasEl.getBoundingClientRect();
+  const { padL, plotW } = lastRecentLayout;
+  const cd = session.candles[absIdx];
+  if(!cd){ hideRecentTooltip(); return; }
+
+  crossEl.style.display = 'block';
+  crossEl.style.left = Math.max(padL, Math.min(padL + plotW, xCss)) + 'px';
+  crossEl.style.background = pinned ? 'rgba(245,166,35,0.55)' : 'rgba(220,228,236,0.35)';
+
+  tipEl.style.display = 'block';
+  tipEl.style.pointerEvents = pinned ? 'auto' : 'none';
+  tipEl.innerHTML =
+    `<b>${pinned ? '📌 ' : ''}${fmtDateTime(absIdx)}</b>${pinned ? ' <span id="recentTooltipUnpinBtn" style="cursor:pointer; color:var(--muted); float:right; margin-left:8px;">✕</span>' : ''}<br>` +
+    `시 ${Math.round(cd.open).toLocaleString()} · 고 ${Math.round(cd.high).toLocaleString()}<br>` +
+    `저 ${Math.round(cd.low).toLocaleString()} · 종 ${Math.round(cd.close).toLocaleString()}<br>` +
+    `거래량 ${Math.round(cd.v).toLocaleString()}`;
+  const wrapWidth = rect.width;
+  let tipLeft = xCss + 14;
+  if(tipLeft + 148 > wrapWidth) tipLeft = xCss - 160;
+  tipEl.style.left = Math.max(4, tipLeft) + 'px';
+  tipEl.style.top = '6px';
+
+  if(pinned){
+    const unpinBtn = document.getElementById('recentTooltipUnpinBtn');
+    if(unpinBtn) unpinBtn.addEventListener('click', (e)=>{ e.stopPropagation(); unpinRecentTooltip(); });
+  }
+}
+function hideRecentTooltip(){
+  const crossEl = document.getElementById('recentCrosshairLine');
+  const tipEl = document.getElementById('recentChartTooltip');
+  if(crossEl) crossEl.style.display = 'none';
+  if(tipEl){ tipEl.style.display = 'none'; tipEl.style.pointerEvents = 'none'; }
+}
+function unpinRecentTooltip(){ pinnedRecentIdx = null; hideRecentTooltip(); }
+
+function handleRecentChartHover(clientX){
+  if(pinnedRecentIdx != null) return; // 고정돼 있으면 마우스를 움직여도 유지
+  const recentCanvasEl = document.getElementById('recentCanvas');
+  if(!lastRecentLayout || !session || !recentCanvasEl){ hideRecentTooltip(); return; }
+  const rect = recentCanvasEl.getBoundingClientRect();
+  const xCss = clientX - rect.left;
+  const { padL, plotW, n, startIdx } = lastRecentLayout;
+  if(xCss < padL - 2 || xCss > padL + plotW + 2){ hideRecentTooltip(); return; }
+  const idxFloat = (xCss - padL) / plotW * (n - 1);
+  const localIdx = Math.max(0, Math.min(n - 1, Math.round(idxFloat)));
+  renderRecentTooltip(startIdx + localIdx, xCss, false);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const recentCanvasEl = document.getElementById('recentCanvas');
+  if(!recentCanvasEl) return;
+  recentCanvasEl.addEventListener('mousemove', (e)=> handleRecentChartHover(e.clientX));
+  recentCanvasEl.addEventListener('mouseleave', ()=>{ if(pinnedRecentIdx == null) hideRecentTooltip(); });
+  recentCanvasEl.addEventListener('click', (e)=>{
+    if(!lastRecentLayout || !session) return;
+    const rect = recentCanvasEl.getBoundingClientRect(); const xCss = e.clientX - rect.left;
+    const { padL, plotW, n, startIdx } = lastRecentLayout;
+    if(xCss < padL - 2 || xCss > padL + plotW + 2) return;
+    const idxFloat = (xCss - padL) / plotW * (n - 1);
+    const localIdx = Math.max(0, Math.min(n - 1, Math.round(idxFloat)));
+    pinnedRecentIdx = startIdx + localIdx;
+    renderRecentTooltip(pinnedRecentIdx, xCss, true);
+  });
+  let recentTouchStartX = null;
+  recentCanvasEl.addEventListener('touchstart', (e)=>{
+    if(e.touches && e.touches[0]) recentTouchStartX = e.touches[0].clientX;
+  }, {passive:true});
+  recentCanvasEl.addEventListener('touchmove', (e)=>{
+    if(!e.touches || !e.touches[0]) return;
+    const dx = Math.abs(e.touches[0].clientX - (recentTouchStartX ?? e.touches[0].clientX));
+    handleRecentChartHover(e.touches[0].clientX);
+    if(dx > 6) e.preventDefault();
+  }, {passive:false});
+  recentCanvasEl.addEventListener('touchend', ()=>{ if(pinnedRecentIdx == null) hideRecentTooltip(); });
+});
 
 document.getElementById('btnRewindReset').addEventListener('click', ()=>{
   if(direction || dataMode==='real_live') return;
