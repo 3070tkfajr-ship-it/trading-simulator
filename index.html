@@ -1442,7 +1442,7 @@ function dashboardTodayKey(date){
     if(nextBtn) nextBtn.disabled = curIndex >= MONTHS.length - 1;
 
     const nDays = daysInMonth(y, m);
-    const lead = toMonFirstIdx(firstWeekday(y, m));
+    const lead = firstWeekday(y, m); // 그리드는 일요일 시작(0=일)의 익숙한 달력 모양 그대로
     let monthPnl = 0, monthCount = 0, monthWins = 0;
     const dayCells = []; // {day, pnl, count, isWeekend} | null(blank)
     for(let i = 0; i < lead; i++) dayCells.push(null);
@@ -1469,7 +1469,7 @@ function dashboardTodayKey(date){
     const gridEl = document.getElementById('calGrid');
     if(gridEl){
       gridEl.innerHTML = '';
-      ['월','화','수','목','금','토','일'].forEach(dow=>{
+      ['일','월','화','수','목','금','토'].forEach(dow=>{
         const el = document.createElement('div'); el.className = 'cal-dow'; el.textContent = dow; gridEl.appendChild(el);
       });
       dayCells.forEach(cell=>{
@@ -1487,22 +1487,32 @@ function dashboardTodayKey(date){
       });
     }
 
-    // 주별 순손익 (달력에 보이는 행 단위, 일~토 기준 — 주말 데이터는 항상 0이므로 자연히 제외됨)
+    // 주별 순손익 — 달력 그리드 표시 순서(일~토)와 무관하게, 월~일을 한 주로 묶어서 별도 계산
     const weeklyEl = document.getElementById('calWeekly');
     if(weeklyEl){
       weeklyEl.innerHTML = '';
-      for(let i = 0; i < dayCells.length; i += 7){
-        const chunk = dayCells.slice(i, i + 7).filter(c => c !== null);
-        if(chunk.length === 0) continue;
-        const wPnl = chunk.reduce((s,c)=>s+c.pnl, 0);
-        const wCount = chunk.reduce((s,c)=>s+c.count, 0);
-        const first = chunk[0].day, last = chunk[chunk.length-1].day;
+      const weekBuckets = []; const bucketIndexByKey = {};
+      for(let d = 1; d <= nDays; d++){
+        const wd = weekdayOf(y, m, d); // 0=일 ... 6=토
+        const mondayOffset = (wd + 6) % 7; // 그 날짜가 속한 주의 월요일까지 며칠 전인지 (0=월요일 본인)
+        const mondayDate = new Date(y, m - 1, d - mondayOffset);
+        const key = `${mondayDate.getFullYear()}-${mondayDate.getMonth()+1}-${mondayDate.getDate()}`;
+        if(!(key in bucketIndexByKey)){ bucketIndexByKey[key] = weekBuckets.length; weekBuckets.push([]); }
+        const isWeekend = (wd === 0 || wd === 6);
+        const trades = isWeekend ? [] : loadDayTrades(y, m, d);
+        const pnl = trades.reduce((s, t) => s + t.pnl, 0);
+        weekBuckets[bucketIndexByKey[key]].push({ day: d, pnl, count: trades.length });
+      }
+      weekBuckets.forEach(days=>{
+        const wPnl = days.reduce((s,c)=>s+c.pnl, 0);
+        const wCount = days.reduce((s,c)=>s+c.count, 0);
+        const first = days[0].day, last = days[days.length-1].day;
         const row = document.createElement('div');
         row.className = 'cal-week-row';
         const vClass = wCount === 0 ? 'flat' : (wPnl >= 0 ? 'win' : 'loss');
         row.innerHTML = `<span class="lbl">${m}/${first} ~ ${m}/${last}</span><span class="v ${vClass}">${wCount ? fmtWon(wPnl) + ' · ' + wCount + '건' : '기록 없음'}</span>`;
         weeklyEl.appendChild(row);
-      }
+      });
     }
   }
 
