@@ -490,6 +490,7 @@
       토스증권 등 MTS/HTS에서 찍은 1분봉 차트 스크린샷을 업로드하면, 아지즈 기법 기준으로 타점을 분석해 줍니다.<br>
       <span style="color:var(--cyan);">Gemini</span> / <span style="color:var(--amber);">Claude Sonnet 5</span> 중 선택 가능
     </div>
+    <div id="openingGuardBanner" style="display:none; background:#241417; border:1px solid #4A2129; color:#F0A6AC; font-size:12px; font-weight:700; padding:9px 12px; border-radius:8px; margin-bottom:12px;"></div>
 
 <div class="srcbar">
   <input type="file" id="chartImageInput" accept="image/*" style="display: none;">
@@ -520,6 +521,14 @@
         <span><b style="background:var(--grayline)"></b>EMA20</span>
         <span><b style="background:#5B6BFF"></b>EMA200</span>
       </div>
+    </div>
+    <div id="onewayRiskBar" style="display:none; flex-direction:column; gap:4px; margin:-2px 0 10px;">
+      <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted);">
+        <span>🌊 원웨이장 위험도</span>
+        <span id="onewayRiskStars" style="letter-spacing:1px; font-size:13px;"></span>
+        <span id="onewayRiskNote" style="color:var(--muted);"></span>
+      </div>
+      <div id="onewayRiskGuidance" style="display:none; font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:6px;"></div>
     </div>
     <div id="priceChartWrap" style="position:relative;">
       <canvas id="priceCanvas" height="360"></canvas>
@@ -986,7 +995,117 @@ function dashboardTodayKey(date){
     }
 
     /* ---- 🟢 진입 / 🔴 청산 플로우 ---- */
+    // 진입 시점에 화면에 그 종목의 실시간 차트가 떠 있으면(같은 심볼 + real_live 모드) VWAP/EMA/StochRSI/거래량으로
+    // 아지즈 프롬프트 배점 로직을 약식 규칙으로 즉석 계산. 없으면 점수는 생략하고 SL/TP 제안만 한다.
+    function computeQuickAzizFeedback(symbolInput, entryPrice){
+      const normalized = symbolInput.trim().toUpperCase();
+      const isLiveMatch = (typeof dataMode !== 'undefined' && dataMode === 'real_live'
+        && typeof liveSymbolKeys !== 'undefined' && liveSymbolKeys.length
+        && liveSymbolKeys.some(k => k === normalized || normalized.includes(k) || k.includes(normalized))
+        && typeof session !== 'undefined' && session && session.candles && session.candles.length
+        && typeof indicators !== 'undefined' && indicators);
+
+      let sl = null, tp = null, slBasis = '';
+      let scoreHtml = '';
+
+      if(isLiveMatch){
+        const idx = session.candles.length - 1;
+        const vwapNow = indicators.vwap[idx];
+        const e5 = indicators.ema5[idx], e9 = indicators.ema9[idx], e20 = indicators.ema20[idx], e200 = indicators.ema200[idx];
+        const kNow = (indicators.stoch && indicators.stoch.K) ? indicators.stoch.K[idx] : null;
+        const recentVols = session.candles.slice(Math.max(0, idx - 20), idx).map(c => c.v).filter(v => v > 0);
+        const avgVol = recentVols.length ? recentVols.reduce((a, b) => a + b, 0) / recentVols.length : null;
+        const curVol = session.candles[idx].v;
+
+        // 손절 기준: 진입가 아래의 VWAP/20EMA 중 진입가에 더 가까운(=더 높은) 쪽
+        const candidates = [
+          {v: vwapNow, label: 'VWAP'},
+          {v: e20, label: '20EMA'}
+        ].filter(c => c.v != null && c.v < entryPrice);
+        if(candidates.length){
+          candidates.sort((a, b) => b.v - a.v);
+          sl = candidates[0].v; slBasis = candidates[0].label + ' 기준';
+        }
+
+        let vwapScore = 0;
+        if(vwapNow != null){
+          if(entryPrice >= vwapNow){
+            const distPct = (entryPrice - vwapNow) / vwapNow * 100;
+            vwapScore = distPct <= 1.5 ? 30 : (distPct <= 3 ? 20 : 10);
+          } else { vwapScore = 3; }
+        }
+        let emaScore = 0;
+        if(e5 != null && e9 != null && e20 != null && e200 != null){
+          if(e5 > e9) emaScore += 10;
+          if(e9 > e20) emaScore += 10;
+          if(entryPrice > e20) emaScore += 10;
+          if(entryPrice > e200) emaScore += 10;
+        }
+        let stochScore = 6;
+        if(kNow != null){
+          stochScore = kNow < 20 ? 11 : (kNow > 80 ? 3 : 7);
+        }
+        let volScore = 0;
+        if(avgVol && curVol){
+          const ratio = curVol / avgVol;
+          volScore = ratio >= 1.5 ? 8 : (ratio >= 1.0 ? 5 : 2);
+        }
+        const total = vwapScore + emaScore + stochScore + volScore;
+        const tone = total >= 65 ? '근거 탄탄한' : (total >= 40 ? '보통 수준의' : '근거 약한');
+        scoreHtml = `<b>⚡ 약식 자동 채점 (참고용, ${total}/96점)</b><br>` +
+          `${tone} 진입이에요 — VWAP ${vwapScore}/30 · EMA정렬 ${emaScore}/40 · StochRSI ${stochScore}/13 · 거래량 ${volScore}/8<br><br>`;
+      }
+
+      if(sl == null){ sl = entryPrice * 0.985; slBasis = '진입가 -1.5% (구조적 기준 데이터 없음, 화면에 이 종목 실시간 차트가 없어서)'; }
+      const riskAmt = entryPrice - sl;
+      tp = entryPrice + riskAmt * 2; // 기본 2:1, 참고용 시작점
+      const rr = riskAmt > 0 ? (tp - entryPrice) / riskAmt : null;
+
+      const html = `${scoreHtml}` +
+        `<b>📍 손절/익절 제안</b><br>` +
+        `손절: <span style="color:var(--red)">약 ${Math.round(sl).toLocaleString()}</span> (${slBasis}) — 여기 닿으면 무조건 칼손절<br>` +
+        `익절: <span style="color:var(--good)">약 ${Math.round(tp).toLocaleString()}</span> (2:1 기준 시작점, 흐름 보면서 유도리 있게)` +
+        (rr != null ? `<br><span style="color:var(--muted); font-size:11px;">손익비 약 ${rr.toFixed(1)}:1</span>` : '');
+      return { html, sl };
+    }
+
+    /* ---- 🔒 손절 미준수 자가체크 페널티 (1시간 쿨다운) ---- */
+    const SL_LOCK_KEY = 'slViolationLockUntil';
+    const SL_LOCK_CODE_KEY = 'slViolationCode';
+    function getSlLockRemainMs(){
+      try {
+        const until = parseInt(localStorage.getItem(SL_LOCK_KEY) || '0', 10);
+        return Math.max(0, until - Date.now());
+      } catch(e){ return 0; }
+    }
+    function setSlViolationLock(){
+      const code = Math.floor(Math.random() * 999) + 1;
+      const until = Date.now() + 60 * 60 * 1000;
+      try { localStorage.setItem(SL_LOCK_KEY, String(until)); localStorage.setItem(SL_LOCK_CODE_KEY, String(code)); } catch(e){}
+      return { code, until };
+    }
+    function fmtRemainMs(ms){
+      const totalMin = Math.max(1, Math.ceil(ms / 60000));
+      const h = Math.floor(totalMin / 60), m = totalMin % 60;
+      return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    }
+    function applySlLockUI(){
+      const entryBtn = document.getElementById('tlEntryBtn');
+      const exitBtn = document.getElementById('tlExitBtn');
+      const remain = getSlLockRemainMs();
+      const locked = remain > 0;
+      const title = locked ? `손절 미준수 페널티로 잠김 (약 ${fmtRemainMs(remain)} 남음)` : '';
+      if(entryBtn){ entryBtn.disabled = locked; entryBtn.title = title; }
+      if(exitBtn){ exitBtn.disabled = locked; exitBtn.title = title; }
+    }
+
     async function doEntryFlow(){
+      const remain = getSlLockRemainMs();
+      if(remain > 0){
+        openWizard('🟢 진입 (매수)');
+        wizardShowResult(`🔒 손절 미준수 페널티로 잠겨있어요.<br>약 ${fmtRemainMs(remain)} 후 다시 시도해주세요.`);
+        return;
+      }
       openWizard('🟢 진입 (매수)');
       try{
         const cash = await askNum('1/4 · 현재 현금매수가능금액을 입력하세요 (원)', '예: 11353960');
@@ -997,11 +1116,13 @@ function dashboardTodayKey(date){
         const type = detectAssetType(symbol);
         const buy = settleBuy(price, qty, type);
         const expectedCash = cash - buy.settled;
+        const feedback = computeQuickAzizFeedback(symbol, price);
 
         const positions = loadPositions();
         positions.push({
           id: 'pos_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-          symbol, type, entryPrice: price, qty, entryCash: cash, entryTs: Date.now()
+          symbol, type, entryPrice: price, qty, entryCash: cash, entryTs: Date.now(),
+          slSuggested: feedback.sl
         });
         savePositions(positions);
         renderPositions();
@@ -1010,12 +1131,19 @@ function dashboardTodayKey(date){
           `<b>✅ 진입 기록됨: ${symbol}</b><br>` +
           `${price.toLocaleString()}원 × ${qty}주 (${RATE_PRESETS[type].label})<br>` +
           `매수정산액: ${fmtWon(buy.settled)}<br>` +
-          `예상 잔고: ${fmtWon(expectedCash)}`
+          `예상 잔고: ${fmtWon(expectedCash)}<br><br>` +
+          `${feedback.html}`
         );
       } catch(e){ /* 취소됨 — 아무것도 저장하지 않음 */ }
     }
 
     async function doExitFlow(){
+      const lockRemain = getSlLockRemainMs();
+      if(lockRemain > 0){
+        openWizard('🔴 청산 (매도)');
+        wizardShowResult(`🔒 손절 미준수 페널티로 잠겨있어요.<br>약 ${fmtRemainMs(lockRemain)} 후 다시 시도해주세요.`);
+        return;
+      }
       const positions = loadPositions();
       if(positions.length === 0){
         openWizard('🔴 청산 (매도)');
@@ -1042,6 +1170,24 @@ function dashboardTodayKey(date){
         const result = pnl >= 0 ? '익절' : '손절';
         const expectedCash = target.entryCash - buy.settled + sell.settled; // 진입 시점 현금 기준 예상 잔고
 
+        // 손실이 났을 때만, 진입 시 제안된 손절선을 실제로 지켰는지 자가체크 (전적으로 양심에 맡김)
+        let penaltyHtml = '';
+        if(pnl < 0 && target.slSuggested != null){
+          const followed = await wizardChoose(
+            `진입 시 제안된 손절선(약 ${Math.round(target.slSuggested).toLocaleString()}원)을 지키셨나요?`,
+            [{ label: '✅ 지켰어요', value: 'yes' }, { label: '❌ 못 지켰어요 (뇌동매매)', value: 'no' }]
+          );
+          if(followed === 'no'){
+            const { code } = setSlViolationLock();
+            applySlLockUI();
+            penaltyHtml = `<br><br><div style="background:#241417; border:1px solid #4A2129; border-radius:8px; padding:10px 12px;">` +
+              `<b style="color:var(--red);">🔒 뇌동매매 페널티 발동</b><br>` +
+              `정직하게 체크해주셨어요. 페널티 코드 <b style="color:var(--amber); font-family:var(--mono);">#${code}</b> — 앞으로 1시간 동안 진입/청산이 잠깁니다.<br>` +
+              `<span style="color:var(--muted); font-size:11px;">감정을 가라앉힐 시간을 버는 게 목적이에요.</span>` +
+              `</div>`;
+          }
+        }
+
         // 포지션 갱신(부분청산이면 수량만 차감, 전량청산이면 제거) — render()를 유발하는 pushTradeRecord보다 먼저 저장
         const remaining = target.qty - exitQty;
         const updatedPositions = positions.filter(p => p.id !== target.id);
@@ -1059,12 +1205,15 @@ function dashboardTodayKey(date){
           `${target.entryPrice.toLocaleString()}원 → ${exitPrice.toLocaleString()}원 × ${exitQty}주<br>` +
           `순손익: ${pnl >= 0 ? '+' : ''}${fmtWon(pnl)}<br>` +
           `예상 잔고: ${fmtWon(expectedCash)}` +
-          (remaining > 0 ? `<br>(남은 수량 ${remaining}주는 포지션에 계속 보유 중)` : '')
+          (remaining > 0 ? `<br>(남은 수량 ${remaining}주는 포지션에 계속 보유 중)` : '') +
+          penaltyHtml
         );
       } catch(e){ /* 취소됨 */ }
     }
 
     document.getElementById('tlEntryBtn').addEventListener('click', doEntryFlow);
+    applySlLockUI();
+    setInterval(applySlLockUI, 15000);
     document.getElementById('tlExitBtn').addEventListener('click', doExitFlow);
 
     document.getElementById('tlAddWinBtn').addEventListener('click', ()=>addTrade(1));
@@ -1334,6 +1483,45 @@ function getKstYMD(date){
 }
 // KST 벽시계 기준 y/m/d h:mi:s → 실제 UTC epoch(ms). KST는 연중 UTC+9 고정(서머타임 없음)이라 단순 뺄셈으로 충분.
 function kstWallToEpoch(y,m,d,h,mi,s){ return Date.UTC(y, m-1, d, (h||0)-9, mi||0, s||0); }
+// 뉴욕 현지 시각 기준 오늘의 y/m/d를 구함 (서머타임 자동 반영)
+function getNyYMD(date){
+  const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(date || new Date());
+  const y = +parts.find(p=>p.type==='year').value, m = +parts.find(p=>p.type==='month').value, d = +parts.find(p=>p.type==='day').value;
+  return {y,m,d};
+}
+// 임의 타임존의 벽시계 시각 → 실제 UTC epoch(ms) (서머타임 자동 보정, Intl 기반 반복 수렴)
+function zonedWallToEpoch(y,mo,d,h,mi,timeZone){
+  let guess = Date.UTC(y, mo-1, d, h, mi, 0);
+  const target = guess;
+  for(let iter=0; iter<2; iter++){
+    const dtf = new Intl.DateTimeFormat('en-US', {timeZone, hourCycle:'h23', year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const p = {}; dtf.formatToParts(new Date(guess)).forEach(x=>{ if(x.type!=='literal') p[x.type]=x.value; });
+    const asIfUTC = Date.UTC(+p.year, +p.month-1, +p.day, +p.hour, +p.minute, +p.second);
+    guess += (target - asIfUTC);
+  }
+  return guess;
+}
+// 지금(실제 현재 시각) 기준으로 국내(09:00 KST)/미국(9:30 ET) 정규장 시작 직후 N분 이내인지 판단
+function minutesSinceMarketOpen(market){
+  const now = Date.now();
+  let openEpoch;
+  if(market === 'kr'){
+    const kp = getKstYMD(new Date(now));
+    openEpoch = kstWallToEpoch(kp.y, kp.m, kp.d, 9, 0, 0);
+  } else {
+    const np = getNyYMD(new Date(now));
+    openEpoch = zonedWallToEpoch(np.y, np.m, np.d, 9, 30, 'America/New_York');
+  }
+  return (now - openEpoch) / 60000;
+}
+const OPENING_GUARD_MINUTES = 10;
+function getActiveOpeningGuard(){
+  const kr = minutesSinceMarketOpen('kr');
+  if(kr >= 0 && kr < OPENING_GUARD_MINUTES) return { market: '국내', remainMin: OPENING_GUARD_MINUTES - kr };
+  const us = minutesSinceMarketOpen('us');
+  if(us >= 0 && us < OPENING_GUARD_MINUTES) return { market: '미국', remainMin: OPENING_GUARD_MINUTES - us };
+  return null;
+}
 // 한투 API 형식(YYYYMMDD, HHMMSS 문자열)을 epoch로 변환
 function krDateTimeToEpoch(dateStr, hourStr){
   const ds = (dateStr && dateStr.length===8) ? dateStr : (()=>{ const t=getKstYMD(); return `${t.y}${String(t.m).padStart(2,'0')}${String(t.d).padStart(2,'0')}`; })();
@@ -1392,6 +1580,7 @@ function parseCsv(text){
 let session = null; let indicators = null; let cutoff = 0; let selectedIdx = 0; let maxCutoffReached = 0;
 let lastPriceLayout = null; let bought = false; let direction = null; let entryIdx = -1;
 let roundNo = 0; let dataMode = 'synthetic'; let whatIfMarkerIdx = null;
+let liveSymbolKeys = []; // 지금 실시간으로 로드된 종목의 코드/이름 (진입 시 즉석 채점에 씀)
 let viewAllMode = false; let viewAllPrevCutoff = 0;
 
 const priceCanvas = document.getElementById('priceCanvas'); const stochCanvas = document.getElementById('stochCanvas');
@@ -1456,10 +1645,72 @@ function fmtDateTime(i){
   return fmtTime(i);
 }
 
+// 🌊 원웨이장(추세 한쪽 쏠림) 위험도 — VWAP 편측 비율 / 캔들 방향 편중 / EMA20 기울기를 조합한 약식 규칙 기반 채점 (별 1~5)
+function computeOneWayRisk(visible, revealEnd){
+  const WINDOW = 60;
+  const n = visible.length;
+  if(n < 20) return null; // 데이터 부족
+
+  const startIdx = Math.max(0, revealEnd - WINDOW + 1);
+
+  let aboveCount=0, belowCount=0, vwapValid=0, upCount=0, downCount=0;
+  for(let i=startIdx; i<=revealEnd; i++){
+    const cd = session.candles[i]; if(!cd) continue;
+    const vw = indicators.vwap[i];
+    if(vw!=null){ vwapValid++; if(cd.close>vw) aboveCount++; else if(cd.close<vw) belowCount++; }
+    if(cd.close>cd.open) upCount++; else if(cd.close<cd.open) downCount++;
+  }
+  const vwapRatio = vwapValid ? Math.max(aboveCount,belowCount)/vwapValid : 0.5;
+  const candleTotal = upCount+downCount;
+  const candleRatio = candleTotal ? Math.max(upCount,downCount)/candleTotal : 0.5;
+
+  const e20now = indicators.ema20[revealEnd], e20start = indicators.ema20[startIdx];
+  let slopePct = 0;
+  if(e20now!=null && e20start!=null && e20start>0) slopePct = Math.abs((e20now-e20start)/e20start*100);
+
+  const vwapScore = Math.max(0, (vwapRatio-0.5)/0.5*100);
+  const candleScore = Math.max(0, (candleRatio-0.5)/0.5*100);
+  const slopeScore = Math.min(100, slopePct/3*100); // 윈도우 동안 3%+ 기울기면 만점
+
+  const overall = vwapScore*0.4 + candleScore*0.3 + slopeScore*0.3;
+  const stars = overall<20 ? 1 : overall<40 ? 2 : overall<60 ? 3 : overall<80 ? 4 : 5;
+  const dir = aboveCount>belowCount ? '상승' : (belowCount>aboveCount ? '하락' : '중립');
+  return { stars, overall: Math.round(overall), dir, vwapRatio, candleRatio, slopePct };
+}
+function renderOneWayRiskBar(visible, revealEnd){
+  const bar = document.getElementById('onewayRiskBar');
+  const starsEl = document.getElementById('onewayRiskStars');
+  const noteEl = document.getElementById('onewayRiskNote');
+  const guideEl = document.getElementById('onewayRiskGuidance');
+  if(!bar) return;
+  const r = computeOneWayRisk(visible, revealEnd);
+  if(!r){ bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const starColor = r.stars>=4 ? 'var(--red)' : (r.stars>=3 ? 'var(--amber)' : 'var(--good)');
+  starsEl.style.color = starColor;
+  starsEl.textContent = '★'.repeat(r.stars) + '☆'.repeat(5-r.stars);
+  noteEl.textContent = `(최근 ${Math.min(60, visible.length)}봉 · ${r.dir} 쏠림 ${Math.round(r.vwapRatio*100)}% · 캔들 편중 ${Math.round(r.candleRatio*100)}%)`;
+
+  if(guideEl){
+    if(r.stars >= 4){
+      guideEl.style.display = 'block';
+      guideEl.style.background = '#241417'; guideEl.style.border = '1px solid #4A2129'; guideEl.style.color = '#F0A6AC';
+      guideEl.textContent = `🚫 역매매 금지 — ${r.dir} 추세 순응 진입만, 그것도 소량·단기(스캘프)로만`;
+    } else if(r.stars === 3){
+      guideEl.style.display = 'block';
+      guideEl.style.background = '#241C0D'; guideEl.style.border = '1px solid #4A3419'; guideEl.style.color = '#E8C27A';
+      guideEl.textContent = `⚠️ 역매매 주의 — 순응 매매도 평소보다 사이즈 줄이는 걸 권장`;
+    } else {
+      guideEl.style.display = 'none';
+    }
+  }
+}
+
 function render(){
   const c = session.candles;
   const revealEnd = direction ? Math.min(entryIdx+30, c.length-1) : cutoff;
   const visible = c.slice(0, revealEnd+1); const last = visible[visible.length-1];
+  renderOneWayRiskBar(visible, revealEnd);
 
   if(dataMode === 'real_live') {
     srcBadge.className = 'badge live'; srcBadge.textContent = '✅ 실시간 모니터링' + ` · ${session.label}`;
@@ -1499,8 +1750,7 @@ function render(){
   }
 }
 
-function drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, intervalMinutes){
-  intervalMinutes = intervalMinutes || 60;
+function drawTimeAxis(ctx, visible, xAt, W, padR, H, padT){
   const n = visible.length;
   const axisTop = H;
 
@@ -1527,48 +1777,27 @@ function drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, intervalMinutes){
 
   ctx.strokeStyle = '#232C38'; ctx.beginPath(); ctx.moveTo(0, axisTop+0.5); ctx.lineTo(W, axisTop+0.5); ctx.stroke();
 
+  // 실제 시장 시간이 아니라 "픽셀 기준으로 일정한 간격"에 눈금을 찍고, 그 위치의 실제 시각을 라벨로 표시.
+  // (장 마감/야간처럼 캔들이 비는 구간이 있어도 인덱스 기준으로 이어붙여 그리기 때문에, 정각 기준으로 찍으면
+  //  그 구간 경계에서 눈금이 몰리거나 듬성듬성해져 지저분해 보임 — 실제 트레이딩 차트들이 쓰는 방식대로 통일)
   ctx.textAlign = 'center';
-  let lastDateKey = null, lastTickX = -Infinity, ticksDrawn = 0;
-  for(let i=0; i<n; i++){
+  const plotW = W - (xAt(0)) - padR; // 대략적인 plotW 역산 (padL 위치 = xAt(0))
+  const targetTicks = Math.max(2, Math.floor(plotW/85));
+  const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
+  let lastDateKey = null, lastTickX = -Infinity;
+  for(let i=0; i<n; i+=tickStep){
     const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
     const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
-    const totalMin = hh*60 + mm;
-    if(totalMin % intervalMinutes !== 0) continue; // N분 단위 정각에서만 눈금 표시
-    const x = xAt(i);
-    if(x - lastTickX < 34) continue; // 라벨 겹침 방지
-    lastTickX = x; ticksDrawn++;
-
-    const dateKey = dateKeyFmt.format(dt);
+    const x = xAt(i); const dateKey = dateKeyFmt.format(dt);
     ctx.strokeStyle = '#3A4552'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
     if(dateKey !== lastDateKey && lastDateKey !== null){
       ctx.fillStyle = '#EDF1F5'; ctx.font = 'bold 11px monospace';
       ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16); // "YYYY-MM-DD" → "MM/DD"
     } else {
       ctx.fillStyle = '#AEB8C4'; ctx.font = '11px monospace';
-      ctx.fillText(intervalMinutes < 60 ? `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}` : `${String(hh).padStart(2,'0')}:00`, x, axisTop+16);
+      ctx.fillText(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, x, axisTop+16);
     }
-    lastDateKey = dateKey;
-  }
-  // 표시 구간이 짧아 정각 눈금이 하나도 안 걸리는 경우를 위한 대체 눈금(균등 간격, 실제 시:분)
-  if(ticksDrawn===0){
-    const plotW = W - (xAt(0)) - padR; // 대략적인 plotW 역산 (padL 위치 = xAt(0))
-    const targetTicks = Math.max(2, Math.floor(plotW/90));
-    const tickStep = Math.max(1, Math.round((n-1)/targetTicks)) || 1;
-    let fallbackLastDateKey = null;
-    for(let i=0; i<n; i+=tickStep){
-      const cd = visible[i]; if(!cd || cd.epochMs==null) continue;
-      const dt = new Date(cd.epochMs); const {h:hh, m:mm} = getHM(dt);
-      const x = xAt(i); const dateKey = dateKeyFmt.format(dt);
-      ctx.strokeStyle = '#3A4552'; ctx.beginPath(); ctx.moveTo(x, axisTop); ctx.lineTo(x, axisTop+4); ctx.stroke();
-      if(dateKey !== fallbackLastDateKey && fallbackLastDateKey !== null){
-        ctx.fillStyle = '#EDF1F5'; ctx.font = 'bold 11px monospace';
-        ctx.fillText(dateKey.slice(5).replace('-', '/'), x, axisTop+16);
-      } else {
-        ctx.fillStyle = '#AEB8C4'; ctx.font = '11px monospace';
-        ctx.fillText(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`, x, axisTop+16);
-      }
-      fallbackLastDateKey = dateKey; lastTickX = x;
-    }
+    lastDateKey = dateKey; lastTickX = x;
   }
   // 맨 오른쪽(최신 캔들) 시각은 항상 별도로 강조 표시 — 눈금 간격상 잘리기 쉬운 위치라 겹치지 않을 때만 그림
   if(n>0){
@@ -1633,7 +1862,7 @@ function drawPriceChart(visible, upto){
   }
 
   /* ---------------- 하단 시간축 (KST 1시간 단위 정각 + 날짜 바뀌면 MM/DD 강조 + 거래일 구획선) ---------------- */
-  drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, 60);
+  drawTimeAxis(ctx, visible, xAt, W, padR, H, padT);
 }
 
 const RECENT_WINDOW = 60;
@@ -1678,7 +1907,7 @@ function drawRecentChart(candles, revealEnd){
   drawLine(idx=>indicators.ema20[idx], '#8A93A0', 1.3);
   drawLine(idx=>indicators.ema200[idx], '#5B6BFF', 1.8);
 
-  drawTimeAxis(ctx, visible, xAt, W, padR, H, padT, 5);
+  drawTimeAxis(ctx, visible, xAt, W, padR, H, padT);
 
   const countLabel = document.getElementById('recentCountLabel');
   if(countLabel) countLabel.textContent = `최근 ${n}개 캔들`;
@@ -2261,13 +2490,13 @@ document.getElementById('btnCopy').addEventListener('click', ()=>{
 });
 
 /* ---------------- API 통신 및 버튼 이벤트 ---------------- */
-document.getElementById('btnNewRound').addEventListener('click', ()=>{ dataMode='synthetic'; startRound(genSyntheticSession(Math.floor(Math.random()*99999)+1)); });
+document.getElementById('btnNewRound').addEventListener('click', ()=>{ dataMode='synthetic'; liveSymbolKeys=[]; startRound(genSyntheticSession(Math.floor(Math.random()*99999)+1)); });
 document.getElementById('btnNextRound').addEventListener('click', ()=>{ if(dataMode==='synthetic') startRound(genSyntheticSession(Math.floor(Math.random()*99999)+1)); else startRound(session); });
 document.getElementById('btnToggleCsv').addEventListener('click', ()=>{ const box = document.getElementById('csvBox'); box.style.display = box.style.display==='none' ? 'block':'none'; });
 document.getElementById('btnLoadCsv').addEventListener('click', ()=>{
   const text = document.getElementById('csvInput').value; const candles = parseCsv(text);
   if(candles.length<40){ showAppAlert('파싱된 캔들이 너무 적어요 (최소 40개 이상 필요). 형식을 확인해주세요.'); return; }
-  dataMode='real'; startRound({label:`실데이터 · ${candles.length}개 캔들`, candles}); document.getElementById('csvBox').style.display='none';
+  dataMode='real'; liveSymbolKeys=[]; startRound({label:`실데이터 · ${candles.length}개 캔들`, candles}); document.getElementById('csvBox').style.display='none';
 });
 
 // 한투 API 실시간 연동 (일봉/분봉 500개 지원 + 실시간 분석 버튼 활성화)
@@ -2324,6 +2553,7 @@ async function loadDomestic(code, tf, nameHint) {
         dataMode = 'real_live'; 
         const namePart = nameHint ? `${nameHint} (${code})` : code;
         const labelText = tf === "D" ? `${namePart} · 한투 일봉` : `${namePart} · 한투 1분봉`;
+        liveSymbolKeys = [code, nameHint].filter(Boolean).map(s => s.trim().toUpperCase());
         startRound({label: labelText, candles});
 
         // 🚀 핵심 포인트: 실시간 모니터링 화면이 떴을 때도 AI 분석 버튼을 바로 쓸 수 있게 강제 활성화!
@@ -2417,6 +2647,7 @@ async function loadUs(symbol, nameHint) {
         const usLabel = nameHint && nameHint.toUpperCase() !== symbol.toUpperCase()
           ? `${nameHint} (${symbol.toUpperCase()}) · Alpaca 1분봉`
           : `${symbol.toUpperCase()} · Alpaca 1분봉`;
+        liveSymbolKeys = [symbol, nameHint].filter(Boolean).map(s => s.trim().toUpperCase());
         startRound({label: usLabel, candles});
 
         // 실시간 모니터링 화면에서도 AI 분석 버튼을 바로 쓸 수 있게 활성화
@@ -2549,6 +2780,11 @@ function extractAiText(data, isClaude){
 // 공통 분석 함수
 async function requestAiAnalysis(provider) {
   if (!base64Image) return;
+  const guard = getActiveOpeningGuard();
+  if(guard){
+    showAppAlert(`⏱️ ${guard.market} 장 시작 직후(${OPENING_GUARD_MINUTES}분)라 분석을 잠시 제한해요.\n변동성에 휩쓸리기 쉬운 구간이라 그래요 — 차트 확인은 계속 가능하고, 약 ${Math.ceil(guard.remainMin)}분 후 다시 시도해주세요.`);
+    return;
+  }
   const isClaude = provider === 'claude';
   const btn = isClaude ? btnAnalyzeClaude : btnAnalyzeGemini;
   const otherBtn = isClaude ? btnAnalyzeGemini : btnAnalyzeClaude;
@@ -2591,16 +2827,34 @@ async function requestAiAnalysis(provider) {
 }
 
 btnAnalyzeGemini.addEventListener('click', () => requestAiAnalysis('gemini'));
+
+// ⏱️ 장초반 10분 분석 제한 배너 — 실시간 갱신
+function updateOpeningGuardBanner(){
+  const banner = document.getElementById('openingGuardBanner');
+  if(!banner) return;
+  const guard = getActiveOpeningGuard();
+  if(guard){
+    banner.style.display = 'block';
+    banner.textContent = `⏱️ ${guard.market} 장 시작 직후(${OPENING_GUARD_MINUTES}분)라 AI 분석이 잠시 제한돼요 — 차트 확인은 계속 가능 (약 ${Math.ceil(guard.remainMin)}분 후 해제)`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+updateOpeningGuardBanner();
+setInterval(updateOpeningGuardBanner, 15000);
+
 btnAnalyzeClaude.addEventListener('click', () => requestAiAnalysis('claude'));
 
 /* ---------------- 현재 차트 원클릭 분석 ---------------- */
 document.getElementById('btnAnalyzeCurrent').addEventListener('click', async function() {
   const btn = this;
   const originalText = btn.textContent;
-  const choice = prompt("분석할 AI 선택:\n1 = Gemini\n2 = Claude Sonnet 5", "2");
-  if (!choice) return;
-
-  const isClaude = choice.trim() === '2';
+  const guard = getActiveOpeningGuard();
+  if(guard){
+    showAppAlert(`⏱️ ${guard.market} 장 시작 직후(${OPENING_GUARD_MINUTES}분)라 분석을 잠시 제한해요.\n변동성에 휩쓸리기 쉬운 구간이라 그래요 — 차트 확인은 계속 가능하고, 약 ${Math.ceil(guard.remainMin)}분 후 다시 시도해주세요.`);
+    return;
+  }
+  const isClaude = true; // 기본값: Claude Sonnet 5 (prompt()가 일부 브라우저/웹뷰에서 막히는 문제가 있어 고정값으로 변경)
   const endpoint = isClaude
     ? 'https://kis-proxy-server-di40.onrender.com/analyze-claude'
     : 'https://kis-proxy-server-di40.onrender.com/analyze';
