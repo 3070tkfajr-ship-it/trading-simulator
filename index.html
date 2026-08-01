@@ -2063,6 +2063,58 @@ function drawTimeAxis(ctx, visible, xAt, W, padR, H, padT){
   ctx.textAlign = 'left';
 }
 
+// 📍 현재가 가로선 + 우측 가격표 (MEXC/TradingView 스타일)
+function drawLastPriceLine(ctx, visible, xAt, yAt, W, padL, padR){
+  if(!visible.length) return;
+  const last = visible[visible.length - 1];
+  const y = yAt(last.close);
+  const up = last.close >= last.open;
+  const color = up ? '#3ECF8E' : '#E5484D';
+
+  ctx.save();
+  ctx.strokeStyle = color; ctx.setLineDash([4,3]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+  ctx.restore();
+
+  const label = Math.round(last.close).toLocaleString();
+  ctx.font = 'bold 11px monospace';
+  const textW = ctx.measureText(label).width;
+  const boxW = textW + 12, boxH = 16;
+  const boxX = W - padR - boxW, boxY = y - boxH / 2;
+  ctx.fillStyle = color;
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.fillStyle = '#0A0E13';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, boxX + 6, y + 0.5);
+  ctx.textBaseline = 'alphabetic';
+}
+
+// 📍 표시 구간 내 최고점/최저점 라벨 (MEXC 스타일 — 점 + 가격 텍스트)
+function drawHighLowMarkers(ctx, visible, xAt, yAt, W){
+  if(!visible.length) return;
+  let hiIdx = 0, loIdx = 0;
+  for(let i = 1; i < visible.length; i++){
+    if(visible[i].high > visible[hiIdx].high) hiIdx = i;
+    if(visible[i].low < visible[loIdx].low) loIdx = i;
+  }
+  const hiCd = visible[hiIdx], loCd = visible[loIdx];
+  const hiX = xAt(hiIdx), hiY = yAt(hiCd.high);
+  const loX = xAt(loIdx), loY = yAt(loCd.low);
+
+  ctx.font = 'bold 10px monospace';
+  ctx.fillStyle = '#DCE4EC';
+
+  ctx.beginPath(); ctx.arc(hiX, hiY, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.textAlign = hiX > W * 0.75 ? 'right' : 'left';
+  ctx.fillText(Math.round(hiCd.high).toLocaleString(), hiX + (ctx.textAlign === 'right' ? -7 : 7), hiY - 6);
+
+  ctx.beginPath(); ctx.arc(loX, loY, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.textAlign = loX > W * 0.75 ? 'right' : 'left';
+  ctx.fillText(Math.round(loCd.low).toLocaleString(), loX + (ctx.textAlign === 'right' ? -7 : 7), loY + 14);
+
+  ctx.textAlign = 'left';
+}
+
 function drawPriceChart(visible, upto){
   const ctx = priceCanvas.getContext('2d'); const W = priceCanvas.clientWidth || 1000;
   const H = 360; const axisH = 24; const Htotal = H + axisH; // axisH: 하단 시간축(시각/날짜) 표시용 여백
@@ -2092,6 +2144,9 @@ function drawPriceChart(visible, upto){
     for(let i=0;i<n;i++){ if(arr[i]==null) continue; const x=xAt(i), y=yAt(arr[i]); if(!started){ctx.moveTo(x,y); started=true;} else ctx.lineTo(x,y); } ctx.stroke();
   }
   drawLine(indicators.vwap.slice(0,n), '#F5A623', 1.6); drawLine(indicators.ema5.slice(0,n), '#35C9C1', 1.1); drawLine(indicators.ema9.slice(0,n), '#E0629E', 1.1); drawLine(indicators.ema20.slice(0,n), '#8A93A0', 1.3); drawLine(indicators.ema200.slice(0,n), '#5B6BFF', 1.8);
+
+  drawHighLowMarkers(ctx, visible, xAt, yAt, W);
+  drawLastPriceLine(ctx, visible, xAt, yAt, W, padL, padR);
 
   if(!direction && selectedIdx!=null && selectedIdx>=0 && selectedIdx<n && dataMode!=='real_live'){
     const x = xAt(selectedIdx); ctx.save(); ctx.strokeStyle = '#F5A623'; ctx.setLineDash([3,3]); ctx.lineWidth=1;
@@ -2158,6 +2213,9 @@ function drawRecentChart(candles, revealEnd){
   drawLine(idx=>indicators.ema9[idx], '#E0629E', 1.1);
   drawLine(idx=>indicators.ema20[idx], '#8A93A0', 1.3);
   drawLine(idx=>indicators.ema200[idx], '#5B6BFF', 1.8);
+
+  drawHighLowMarkers(ctx, visible, xAt, yAt, W);
+  drawLastPriceLine(ctx, visible, xAt, yAt, W, padL, padR);
 
   drawTimeAxis(ctx, visible, xAt, W, padR, H, padT);
 
