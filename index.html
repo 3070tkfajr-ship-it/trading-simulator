@@ -491,6 +491,7 @@
       <span id="srcBadge" class="badge live">● 합성(연습용) 데이터</span>
       <button id="btnLoadReal" class="live-btn">📡 실시간 모니터링 (한투 API)</button>
       <button id="btnLoadUs" class="live-btn">🇺🇸 미국 주식 불러오기 (Alpaca · 프리/애프터마켓 포함)</button>
+      <button id="btnLoadMexc" class="live-btn" style="background:#0ECB81; border-color:#0ECB81;">🪙 MEXC 선물로 불러오기 (24시간·주말 대응)</button>
       <button id="btnToggleCsv" class="ghost">📁 HTS 과거 데이터 복기 ▾</button>
       <button id="btnNewRound" class="primary">🎲 과거 합성 차트 연습</button>
     </div>
@@ -2979,9 +2980,9 @@ function openCodePicker(mode){
     const titleEl = document.getElementById('codePickerTitle');
     const chipsWrap = document.getElementById('codePickerChips');
 
-    titleEl.textContent = mode === 'us' ? '🇺🇸 미국 주식 조회' : '📡 국내 종목 조회';
-    input.placeholder = mode === 'us' ? '티커 직접 입력 (예: AAPL, TSLA, NVDA)' : '종목코드 직접 입력 (예: 114800 또는 114800,D)';
-    dailyLabel.style.display = mode === 'us' ? 'none' : 'flex'; // 미국 데이터는 일봉 옵션 미지원(1분봉 고정)
+    titleEl.textContent = mode === 'us' ? '🇺🇸 미국 주식 조회' : mode === 'mexc' ? '🪙 MEXC 선물 조회 (24시간)' : '📡 국내 종목 조회';
+    input.placeholder = mode === 'us' ? '티커 직접 입력 (예: AAPL, TSLA, NVDA)' : mode === 'mexc' ? '티커 직접 입력 (예: TSLA, NVDA, AAPL)' : '종목코드 직접 입력 (예: 114800 또는 114800,D)';
+    dailyLabel.style.display = (mode === 'us' || mode === 'mexc') ? 'none' : 'flex'; // 미국/MEXC 데이터는 일봉 옵션 미지원(1분봉 고정)
 
     chipsWrap.innerHTML = '';
     WATCHLIST.filter(w => w.market === mode).forEach(w => {
@@ -2991,10 +2992,17 @@ function openCodePicker(mode){
       chip.addEventListener('click', () => {
         overlay.classList.add('hidden');
         if(mode === 'us') loadUs(w.code, w.label);
+        else if(mode === 'mexc') loadMexc(w.code, w.label);
         else loadDomestic(w.code, dailyChk.checked ? 'D' : '1m', w.label);
       });
       chipsWrap.appendChild(chip);
     });
+    if(mode === 'mexc' && chipsWrap.children.length === 0){
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:10.5px; color:var(--muted); margin-top:6px;';
+      hint.textContent = '예: TSLA, NVDA, AAPL, AMZN, GOOGL, META, MCD, COIN, HOOD (MEXC 선물 상장 종목만 가능)';
+      chipsWrap.appendChild(hint);
+    }
 
     input.value = '';
     overlay.classList.remove('hidden');
@@ -3003,6 +3011,7 @@ function openCodePicker(mode){
 
 document.getElementById('btnLoadReal').addEventListener('click', () => openCodePicker('kr'));
 document.getElementById('btnLoadUs').addEventListener('click', () => openCodePicker('us'));
+document.getElementById('btnLoadMexc').addEventListener('click', () => openCodePicker('mexc'));
 
 function codePickerSubmitManual(){
     const overlay = document.getElementById('codePickerOverlay');
@@ -3012,6 +3021,8 @@ function codePickerSubmitManual(){
     overlay.classList.add('hidden');
     if(codePickerMode === 'us'){
       loadUs(raw.trim());
+    } else if(codePickerMode === 'mexc'){
+      loadMexc(raw.trim());
     } else {
       const parts = raw.split(',');
       loadDomestic(parts[0].trim(), parts.length > 1 ? parts[1].trim().toUpperCase() : (dailyChk.checked ? 'D' : '1m'));
@@ -3054,6 +3065,44 @@ async function loadUs(symbol, nameHint) {
         startRound({label: usLabel, candles});
 
         // 실시간 모니터링 화면에서도 AI 분석 버튼을 바로 쓸 수 있게 활성화
+        document.getElementById('btnAnalyzeCurrentGemini').style.display = 'inline-block'; document.getElementById('btnAnalyzeCurrentClaude').style.display = 'inline-block';
+        document.getElementById('aiAnalysisPanel').style.display = 'block';
+
+    } catch(e) {
+        showAppAlert("서버(kis-proxy-server)와 연결할 수 없어. Render가 슬립 상태면 첫 요청은 30~60초 걸릴 수 있으니 잠시 후 다시 시도해줘!");
+    }
+}
+
+// 🪙 MEXC 선물("US Stock Contracts") 연동 — 인증 불필요, 24시간·주말에도 데이터 있음.
+// ⚠️ 실제 거래소 체결가가 아니라 MEXC 선물 계약가(Ondo 토큰화 주식 연동)라 참고용. 거래량도 실제 시장 유동성과 다르니
+//    VWAP/RelativeVolume 채점은 참고만 하고, 평일 정규장 판단은 한투/Alpaca 데이터를 우선하는 걸 권장.
+async function loadMexc(symbol, nameHint) {
+    try {
+        const res = await fetch(`https://kis-proxy-server-di40.onrender.com/us-data-mexc?symbol=${encodeURIComponent(symbol)}`);
+        const jsonData = await res.json();
+
+        if(jsonData.error){ showAppAlert("MEXC 데이터를 불러오지 못했어: " + jsonData.error + "\n(그 종목이 MEXC 선물에 상장돼있지 않을 수 있어)"); return; }
+
+        const values = jsonData.values;
+        if(!values || values.length === 0){ showAppAlert("데이터가 비어있어. 티커를 확인해줘 (예: TSLA, NVDA, AAPL)."); return; }
+
+        const chronological = [...values].reverse();
+        const candles = [];
+        for(const c of chronological){
+            const o = parseFloat(c.open), h = parseFloat(c.high), l = parseFloat(c.low), close = parseFloat(c.close), v = parseFloat(c.volume);
+            if(!(o > 0) || !(h > 0) || !(l > 0) || !(close > 0)) continue;
+            candles.push({t: candles.length, open:o, high:h, low:l, close, o, h, l, c:close, v: isNaN(v) ? 0 : v,
+                epochMs: usUtcDatetimeToEpoch(c.datetime)});
+        }
+        if(candles.length < 2){ showAppAlert("유효한 캔들이 거의 없습니다."); return; }
+
+        dataMode = 'real_live';
+        const mexcLabel = nameHint && nameHint.toUpperCase() !== symbol.toUpperCase()
+          ? `${nameHint} (${symbol.toUpperCase()}) · MEXC 선물 1분봉 (참고용)`
+          : `${symbol.toUpperCase()} · MEXC 선물 1분봉 (참고용)`;
+        liveSymbolKeys = [symbol, nameHint].filter(Boolean).map(s => s.trim().toUpperCase());
+        startRound({label: mexcLabel, candles});
+
         document.getElementById('btnAnalyzeCurrentGemini').style.display = 'inline-block'; document.getElementById('btnAnalyzeCurrentClaude').style.display = 'inline-block';
         document.getElementById('aiAnalysisPanel').style.display = 'block';
 
