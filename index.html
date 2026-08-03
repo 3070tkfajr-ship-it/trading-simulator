@@ -165,6 +165,10 @@
   #tlEmpty{font-size:11px; color:var(--muted); text-align:center; padding:14px 0;}
 
   #tlCalcBox{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; margin-bottom:12px; overflow:hidden; }
+  #tlBackupBox{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; margin-bottom:12px; overflow:hidden; }
+  #tlBackupToggle{ padding:9px 11px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--cyan); user-select:none; }
+  #tlBackupToggle:hover{background:#1B2432;}
+  #tlBackupBody{ padding:0 11px 11px; }
   #tlBulkBox{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; margin-bottom:12px; overflow:hidden; }
   #tlBulkToggle{ padding:9px 11px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--cyan); user-select:none; }
   #tlBulkToggle:hover{background:#1B2432;}
@@ -377,6 +381,26 @@
       <div id="tlAdvancedBox">
         <div id="tlAdvancedToggle">⚙️ 직접 입력 (계산기 / 수동 기록) ▾</div>
         <div id="tlAdvancedBody" style="display:none;">
+
+      <div id="tlBackupBox">
+        <div id="tlBackupToggle">💾 백업 / 기기 간 동기화 ▾</div>
+        <div id="tlBackupBody" style="display:none;">
+          <div style="font-size:10.5px; color:var(--muted); margin-bottom:8px;">
+            매매 기록은 이 브라우저(기기)에만 저장돼요. 폰↔PC처럼 다른 기기에서 보려면, 한쪽에서 내보내서 다른 쪽에서 가져와야 해요.
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <button id="tlBackupExportBtn" style="flex:1;">⬇️ 파일로 내보내기</button>
+            <button id="tlBackupCopyBtn" style="flex:1;" class="ghost">📋 복사하기</button>
+          </div>
+          <textarea id="tlBackupImportText" rows="3" style="width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; color:var(--text); font-family:var(--mono); font-size:10.5px; padding:8px; resize:vertical;" placeholder="다른 기기에서 복사한 백업 텍스트를 여기 붙여넣거나, 아래에서 파일을 선택하세요"></textarea>
+          <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+            <input type="file" id="tlBackupFileInput" accept=".json" style="display:none;">
+            <button id="tlBackupPickFileBtn" class="ghost" style="flex:1;">📁 파일 선택</button>
+            <button id="tlBackupImportBtn" style="flex:1;">📥 가져오기(합치기)</button>
+          </div>
+          <div id="tlBackupStatus" style="margin-top:8px; font-size:11px; color:var(--muted);"></div>
+        </div>
+      </div>
 
       <div id="tlBulkBox">
         <div id="tlBulkToggle">📋 여러 건 한 번에 기록 (매수/매도 붙여넣기) ▾</div>
@@ -1470,6 +1494,118 @@ function dashboardTodayKey(date){
     document.getElementById('tlAddLossBtn').addEventListener('click', ()=>addTrade(-1));
 
     /* ---- 📋 여러 건 한 번에 기록 (매수/매도 붙여넣기 → FIFO로 자동 매칭해서 개별 매매로 분리) ---- */
+    /* ---- 💾 백업 / 기기 간 동기화 (localStorage는 기기별로 따로 저장되므로 수동 이전용) ---- */
+    const backupToggle = document.getElementById('tlBackupToggle');
+    const backupBody = document.getElementById('tlBackupBody');
+    const backupStatus = document.getElementById('tlBackupStatus');
+    const backupImportText = document.getElementById('tlBackupImportText');
+
+    backupToggle.addEventListener('click', ()=>{
+      const open = backupBody.style.display !== 'none';
+      backupBody.style.display = open ? 'none' : 'block';
+      backupToggle.textContent = open ? '💾 백업 / 기기 간 동기화 ▾' : '💾 백업 / 기기 간 동기화 ▴';
+    });
+
+    const BACKUP_SCALAR_KEYS = ['openPositions', 'lossLimitConfig', 'trackedCashBalance', 'tickerMemoNotes_v1'];
+    function collectBackupData(){
+      const data = { exportedAt: new Date().toISOString(), trades: {}, scalars: {} };
+      try {
+        for(let i = 0; i < localStorage.length; i++){
+          const k = localStorage.key(i);
+          if(k && k.startsWith('trades_')){
+            try { data.trades[k] = JSON.parse(localStorage.getItem(k) || '[]'); } catch(e){}
+          }
+        }
+        BACKUP_SCALAR_KEYS.forEach(k=>{
+          const v = localStorage.getItem(k);
+          if(v != null) data.scalars[k] = v;
+        });
+      } catch(e){}
+      return data;
+    }
+
+    function tradeKey(t){ return [t.ts, t.pnl, t.symbol||'', t.entryPrice||'', t.exitPrice||'', t.qty||'', t.note||''].join('|'); }
+
+    function importBackupData(data){
+      let addedTrades = 0, skippedTrades = 0;
+      try {
+        Object.keys(data.trades || {}).forEach(k=>{
+          let existing = [];
+          try { existing = JSON.parse(localStorage.getItem(k) || '[]'); } catch(e){}
+          const existingKeys = new Set(existing.map(tradeKey));
+          const incoming = data.trades[k] || [];
+          incoming.forEach(t=>{
+            if(!existingKeys.has(tradeKey(t))){ existing.push(t); existingKeys.add(tradeKey(t)); addedTrades++; }
+            else skippedTrades++;
+          });
+          localStorage.setItem(k, JSON.stringify(existing));
+        });
+
+        // openPositions는 id 기준으로 합침(중복 방지), 나머지 스칼라 값은 가져온 값으로 덮어씀
+        if(data.scalars && data.scalars['openPositions']){
+          let existingPos = [];
+          try { existingPos = JSON.parse(localStorage.getItem('openPositions') || '[]'); } catch(e){}
+          const existingIds = new Set(existingPos.map(p=>p.id));
+          let incomingPos = [];
+          try { incomingPos = JSON.parse(data.scalars['openPositions']); } catch(e){}
+          incomingPos.forEach(p=>{ if(!existingIds.has(p.id)){ existingPos.push(p); existingIds.add(p.id); } });
+          localStorage.setItem('openPositions', JSON.stringify(existingPos));
+        }
+        ['lossLimitConfig','trackedCashBalance','tickerMemoNotes_v1'].forEach(k=>{
+          if(data.scalars && data.scalars[k] != null) localStorage.setItem(k, data.scalars[k]);
+        });
+      } catch(e){
+        return { ok:false, error: e.message };
+      }
+      return { ok:true, addedTrades, skippedTrades };
+    }
+
+    document.getElementById('tlBackupExportBtn').addEventListener('click', ()=>{
+      const data = collectBackupData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0,10);
+      a.href = url; a.download = `매매일지-백업-${dateStr}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      backupStatus.textContent = '✅ 파일로 내보냈어요. 다른 기기로 옮겨서 "파일 선택 → 가져오기" 해주세요.';
+    });
+
+    document.getElementById('tlBackupCopyBtn').addEventListener('click', async ()=>{
+      const data = collectBackupData();
+      const text = JSON.stringify(data);
+      try {
+        await navigator.clipboard.writeText(text);
+        backupStatus.textContent = '✅ 클립보드에 복사했어요. 다른 기기에서 붙여넣고 가져오기 해주세요.';
+      } catch(e){
+        backupImportText.value = text; // 클립보드 API 실패 시 텍스트박스에라도 채워서 수동 복사 가능하게
+        backupStatus.textContent = '⚠️ 자동 복사는 안 됐어요. 아래 칸에 채워뒀으니 직접 선택해서 복사해주세요.';
+      }
+    });
+
+    document.getElementById('tlBackupPickFileBtn').addEventListener('click', ()=>{
+      document.getElementById('tlBackupFileInput').click();
+    });
+    document.getElementById('tlBackupFileInput').addEventListener('change', (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { backupImportText.value = reader.result; };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('tlBackupImportBtn').addEventListener('click', ()=>{
+      const raw = backupImportText.value.trim();
+      if(!raw){ backupStatus.textContent = '⚠️ 붙여넣거나 파일을 선택해주세요.'; return; }
+      let data;
+      try { data = JSON.parse(raw); } catch(e){ backupStatus.textContent = '⚠️ 올바른 백업 데이터가 아니에요.'; return; }
+      const result = importBackupData(data);
+      if(!result.ok){ backupStatus.textContent = '⚠️ 가져오기 실패: ' + result.error; return; }
+      backupStatus.textContent = `✅ 가져오기 완료! 새로 추가된 매매 ${result.addedTrades}건 (중복 ${result.skippedTrades}건은 건너뜀)`;
+      renderPositions();
+      render();
+    });
+
     const bulkToggle = document.getElementById('tlBulkToggle');
     const bulkBody = document.getElementById('tlBulkBody');
     const bulkSymbol = document.getElementById('tlBulkSymbol');
