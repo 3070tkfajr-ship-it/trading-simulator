@@ -3389,7 +3389,12 @@ async function loadDomestic(code, tf, nameHint) {
             console.warn('원본 output2:', jsonData.output2);
             return;
         }
-        
+        // 정규장 하루치(보통 300개 이상)치고 너무 적으면, 서버가 어디서 페이지네이션을 멈췄는지 화면에 바로 보여줌 (Render 로그 안 봐도 되게)
+        if(candles.length < 100 && jsonData._debugPages){
+            console.warn('⚠️ 캔들 수가 적음 — 페이지별 수집 로그:', jsonData._debugPages);
+            showAppAlert(`⚠️ 이번엔 ${candles.length}개만 받아왔어. 서버 수집 로그:\n${jsonData._debugPages}`);
+        }
+
         dataMode = 'real_live'; 
         const namePart = nameHint ? `${nameHint} (${code})` : code;
         const labelText = tf === "D" ? `${namePart} · 한투 일봉` : `${namePart} · 한투 1분봉`;
